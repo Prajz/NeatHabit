@@ -11,12 +11,8 @@ enum StudyHabit: String, CaseIterable, Codable, Hashable, Identifiable {
 
     var id: String { rawValue }
 
-    static func activeCases(includePatternStudy: Bool, hasRedoDue: Bool = false) -> [StudyHabit] {
+    static func activeCases(hasRedoDue: Bool = false) -> [StudyHabit] {
         var habits: [StudyHabit] = []
-
-        if includePatternStudy {
-            habits.append(.pattern)
-        }
 
         if hasRedoDue {
             habits.append(.review)
@@ -68,7 +64,7 @@ enum StudyHabit: String, CaseIterable, Codable, Hashable, Identifiable {
     func durationMinutes(settings: StudySettings) -> Int {
         switch self {
         case .pattern:
-            return settings.includePatternStudy ? 30 : 0
+            return 0
         case .problems:
             return settings.problemBlockMinutes
         case .review:
@@ -155,24 +151,63 @@ enum ProblemStatus: String, CaseIterable, Codable, Hashable, Identifiable {
 
 struct StudySettings: Codable, Equatable {
     var dailyMinutes: Int
-    var includePatternStudy: Bool
     var targetFinishDate: Date
     var extraProblems: [CustomProblem]
+    var reminderHour: Int
+    var reminderMinute: Int
+    var notificationsEnabled: Bool
 
     init(
         dailyMinutes: Int = 200,
-        includePatternStudy: Bool = false,
         targetFinishDate: Date = Calendar.current.date(byAdding: .day, value: 29, to: Calendar.current.startOfDay(for: Date())) ?? Date(),
-        extraProblems: [CustomProblem] = []
+        extraProblems: [CustomProblem] = [],
+        reminderHour: Int = 19,
+        reminderMinute: Int = 0,
+        notificationsEnabled: Bool = true
     ) {
         self.dailyMinutes = dailyMinutes
-        self.includePatternStudy = includePatternStudy
         self.targetFinishDate = targetFinishDate
         self.extraProblems = extraProblems
+        self.reminderHour = min(max(reminderHour, 0), 23)
+        self.reminderMinute = min(max(reminderMinute, 0), 59)
+        self.notificationsEnabled = notificationsEnabled
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case dailyMinutes
+        case targetFinishDate
+        case extraProblems
+        case reminderHour
+        case reminderMinute
+        case notificationsEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        dailyMinutes = try container.decodeIfPresent(Int.self, forKey: .dailyMinutes) ?? 200
+        targetFinishDate = try container.decodeIfPresent(Date.self, forKey: .targetFinishDate) ?? Calendar.current.date(
+            byAdding: .day,
+            value: 29,
+            to: Calendar.current.startOfDay(for: Date())
+        ) ?? Date()
+        extraProblems = try container.decodeIfPresent([CustomProblem].self, forKey: .extraProblems) ?? []
+        reminderHour = min(max(try container.decodeIfPresent(Int.self, forKey: .reminderHour) ?? 19, 0), 23)
+        reminderMinute = min(max(try container.decodeIfPresent(Int.self, forKey: .reminderMinute) ?? 0, 0), 59)
+        notificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? true
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(dailyMinutes, forKey: .dailyMinutes)
+        try container.encode(targetFinishDate, forKey: .targetFinishDate)
+        try container.encode(extraProblems, forKey: .extraProblems)
+        try container.encode(reminderHour, forKey: .reminderHour)
+        try container.encode(reminderMinute, forKey: .reminderMinute)
+        try container.encode(notificationsEnabled, forKey: .notificationsEnabled)
     }
 
     var fixedMinutes: Int {
-        20 + (includePatternStudy ? 30 : 0)
+        20
     }
 
     var problemBlockMinutes: Int {
@@ -181,6 +216,13 @@ struct StudySettings: Codable, Equatable {
 
     var estimatedProblemCapacity: Int {
         max(1, problemBlockMinutes / 25)
+    }
+
+    var reminderDate: Date {
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour = reminderHour
+        components.minute = reminderMinute
+        return Calendar.current.date(from: components) ?? Date()
     }
 }
 
@@ -247,8 +289,65 @@ enum StudyPlanner {
         sections.reduce(0) { $0 + $1.problems.count }
     }
 
+    static var requiredProblemTitles: [String] {
+        sections.flatMap(\.problems)
+    }
+
     static func plan(for progress: StoredProgress) -> StudySchedule {
-        plan(startDate: progress.startDate, settings: progress.settings)
+        let baseSchedule = plan(startDate: progress.startDate, settings: progress.settings)
+        let currentDay = progress.currentDayNumber(in: baseSchedule)
+        let completedProblemTitles = progress.touchedProblemTitles
+        var lockedProblemTitles = Set<String>()
+        var adaptedDays: [StudyDay] = []
+
+        for day in baseSchedule.days where day.day <= currentDay {
+            let recordedProblems = progress.dailyProgress(for: day.day).problemStatuses.compactMap { problem, status in
+                status == .untouched ? nil : problem
+            }
+            let problems = orderedUnique(day.problems + recordedProblems)
+            lockedProblemTitles.formUnion(problems)
+            adaptedDays.append(
+                StudyDay(
+                    day: day.day,
+                    topic: day.topic,
+                    problems: problems,
+                    systemDesignFocus: day.systemDesignFocus,
+                    date: day.date,
+                    sections: day.sections
+                )
+            )
+        }
+
+        let remainingProblems = (requiredProblems + progress.settings.extraProblems.map { ProblemRef(title: $0.title, sectionTitle: $0.sectionTitle) }).filter { problem in
+            !completedProblemTitles.contains(problem.title) && !lockedProblemTitles.contains(problem.title)
+        }
+        let futureDays = baseSchedule.days.filter { $0.day > currentDay }
+        let counts = balancedCounts(total: remainingProblems.count, buckets: futureDays.count)
+        var problemIndex = 0
+
+        for (index, day) in futureDays.enumerated() {
+            let count = counts[index]
+            let slice = Array(remainingProblems[problemIndex..<problemIndex + count])
+            problemIndex += count
+
+            adaptedDays.append(
+                StudyDay(
+                    day: day.day,
+                    topic: topic(for: slice),
+                    problems: slice.map(\.title),
+                    systemDesignFocus: day.systemDesignFocus,
+                    date: day.date,
+                    sections: orderedUnique(slice.map(\.sectionTitle))
+                )
+            )
+        }
+
+        return StudySchedule(
+            days: adaptedDays,
+            settings: progress.settings,
+            startDate: baseSchedule.startDate,
+            requiredProblemCount: requiredProblemCount
+        )
     }
 
     static func plan(startDate: Date, settings: StudySettings) -> StudySchedule {
@@ -267,18 +366,10 @@ enum StudyPlanner {
             problemIndex += count
 
             let sections = orderedUnique(slice.map(\.sectionTitle))
-            let topic: String
-            if sections.isEmpty {
-                topic = "Review and catch-up"
-            } else if sections.count == 1 {
-                topic = sections[0]
-            } else {
-                topic = "\(sections[0]) + \(sections[1])"
-            }
 
             return StudyDay(
                 day: dayNumber,
-                topic: topic,
+                topic: topic(for: slice),
                 problems: slice.map(\.title),
                 systemDesignFocus: systemDesignTopics[(dayNumber - 1) % systemDesignTopics.count],
                 date: calendar.date(byAdding: .day, value: dayNumber - 1, to: start),
@@ -450,7 +541,20 @@ enum StudyPlanner {
         let remainder = total % buckets
 
         return (0..<buckets).map { index in
-            base + (index < remainder ? 1 : 0)
+            let previousExtras = (index * remainder) / buckets
+            let currentExtras = ((index + 1) * remainder) / buckets
+            return base + (currentExtras > previousExtras ? 1 : 0)
+        }
+    }
+
+    private static func topic(for problems: [ProblemRef]) -> String {
+        let sections = orderedUnique(problems.map(\.sectionTitle))
+        if sections.isEmpty {
+            return "Review and catch-up"
+        } else if sections.count == 1 {
+            return sections[0]
+        } else {
+            return "\(sections[0]) + \(sections[1])"
         }
     }
 

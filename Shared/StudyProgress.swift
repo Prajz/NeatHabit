@@ -37,10 +37,7 @@ struct DailyProgress: Codable, Equatable {
     }
 
     func completionFraction(for day: StudyDay, settings: StudySettings, hasRedoDue: Bool = false) -> Double {
-        let activeHabits = StudyHabit.activeCases(
-            includePatternStudy: settings.includePatternStudy,
-            hasRedoDue: hasRedoDue
-        )
+        let activeHabits = StudyHabit.activeCases(hasRedoDue: hasRedoDue)
         let completedHabitCount = activeHabits.filter { completedHabits.contains($0) }.count
         let completedProblems = day.problems.filter { status(for: $0) != .untouched }.count
         let completedItems = completedHabitCount + completedProblems
@@ -117,24 +114,49 @@ struct StoredProgress: Codable, Equatable {
         dayProgress[max(day, 1)] ?? DailyProgress()
     }
 
-    func summary(for schedule: StudySchedule) -> PlanSummary {
-        schedule.days.reduce(into: PlanSummary(totalRequiredProblems: schedule.requiredProblemCount)) { summary, day in
-            let daily = dailyProgress(for: day.day)
-            let activeHabits = activeHabits(for: day.day, in: schedule)
-            summary.completedHabits += activeHabits.filter { daily.completedHabits.contains($0) }.count
-            summary.totalHabits += activeHabits.count
-
-            for problem in day.problems {
-                summary.problemCounts.add(daily.status(for: problem))
+    var touchedProblemTitles: Set<String> {
+        dayProgress.values.reduce(into: Set<String>()) { result, daily in
+            for (problem, status) in daily.problemStatuses where status != .untouched {
+                result.insert(problem)
             }
         }
     }
 
+    func status(for problem: String) -> ProblemStatus {
+        for day in dayProgress.keys.sorted() {
+            let status = dailyProgress(for: day).status(for: problem)
+            if status != .untouched {
+                return status
+            }
+        }
+
+        return .untouched
+    }
+
+    func summary(for schedule: StudySchedule) -> PlanSummary {
+        var summary = PlanSummary(totalRequiredProblems: schedule.requiredProblemCount)
+
+        for day in schedule.days {
+            let daily = dailyProgress(for: day.day)
+            let activeHabits = activeHabits(for: day.day, in: schedule)
+            summary.completedHabits += activeHabits.filter { daily.completedHabits.contains($0) }.count
+            summary.totalHabits += activeHabits.count
+        }
+
+        var countedProblems = Set<String>()
+        let requiredProblems = StudyPlanner.requiredProblemTitles
+        let allProblems = requiredProblems + settings.extraProblems.map(\.title)
+
+        for problem in allProblems where !countedProblems.contains(problem) {
+            countedProblems.insert(problem)
+            summary.problemCounts.add(status(for: problem))
+        }
+
+        return summary
+    }
+
     func activeHabits(for day: Int, in schedule: StudySchedule) -> [StudyHabit] {
-        StudyHabit.activeCases(
-            includePatternStudy: schedule.settings.includePatternStudy,
-            hasRedoDue: !redoCandidates(for: day, in: schedule).isEmpty
-        )
+        StudyHabit.activeCases(hasRedoDue: !redoCandidates(for: day, in: schedule).isEmpty)
     }
 
     func completionFraction(for day: StudyDay, in schedule: StudySchedule) -> Double {

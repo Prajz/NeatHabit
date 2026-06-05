@@ -149,9 +149,9 @@ struct MediumHomeWidget: View {
                     Button(intent: ToggleHabitIntent(habitRawValue: habit.rawValue)) {
                         Image(systemName: daily.completedHabits.contains(habit) ? "checkmark.circle.fill" : habit.systemImage)
                             .font(.caption.weight(.black))
-                            .foregroundStyle(daily.completedHabits.contains(habit) ? WidgetTheme.green : WidgetTheme.muted)
+                            .foregroundStyle(daily.completedHabits.contains(habit) ? WidgetTheme.accent : WidgetTheme.muted)
                             .frame(width: 36, height: 30)
-                            .background((daily.completedHabits.contains(habit) ? WidgetTheme.green : WidgetTheme.muted).opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                            .background((daily.completedHabits.contains(habit) ? WidgetTheme.accent : WidgetTheme.muted).opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -308,55 +308,13 @@ struct WidgetStat: View {
 
 struct WidgetGlassBackground: View {
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [WidgetTheme.ink, Color(red: 0.06, green: 0.24, blue: 0.22)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            AngularGradient(
-                colors: [
-                    WidgetTheme.accent.opacity(0.0),
-                    WidgetTheme.accent.opacity(0.48),
-                    WidgetTheme.amber.opacity(0.24),
-                    WidgetTheme.blue.opacity(0.35),
-                    WidgetTheme.accent.opacity(0.0)
-                ],
-                center: .topTrailing,
-                angle: .degrees(16)
-            )
-            .blur(radius: 20)
-            .opacity(0.72)
-            .blendMode(.plusLighter)
-        }
+        Color(red: 0.06, green: 0.07, blue: 0.10)
     }
 }
 
 struct WidgetLightBackground: View {
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.965, green: 0.98, blue: 0.965),
-                    Color(red: 0.89, green: 0.925, blue: 0.91)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            Circle()
-                .fill(WidgetTheme.accent.opacity(0.16))
-                .frame(width: 150, height: 150)
-                .blur(radius: 28)
-                .offset(x: -120, y: -60)
-
-            Circle()
-                .fill(WidgetTheme.amber.opacity(0.12))
-                .frame(width: 160, height: 160)
-                .blur(radius: 30)
-                .offset(x: 120, y: 50)
-        }
+        Color(red: 0.955, green: 0.965, blue: 0.98)
     }
 }
 
@@ -383,8 +341,8 @@ struct NeatHabitWidgetBundle: WidgetBundle {
 private enum WidgetTheme {
     static let ink = Color(red: 0.075, green: 0.092, blue: 0.125)
     static let muted = Color(red: 0.36, green: 0.40, blue: 0.43)
-    static let accent = Color(red: 0.06, green: 0.52, blue: 0.45)
-    static let blue = Color(red: 0.18, green: 0.42, blue: 0.66)
+    static let accent = Color(red: 0.16, green: 0.38, blue: 0.86)
+    static let blue = Color(red: 0.38, green: 0.43, blue: 0.56)
     static let green = Color(red: 0.20, green: 0.58, blue: 0.34)
     static let amber = Color(red: 0.78, green: 0.49, blue: 0.16)
     static let red = Color(red: 0.72, green: 0.25, blue: 0.24)

@@ -25,6 +25,7 @@ struct ContentView: View {
             }
         }
         .animation(.smooth(duration: 0.45), value: store.hasCompletedOnboarding)
+        .font(AppFont.body())
     }
 
     private var mainTabs: some View {
@@ -110,23 +111,6 @@ private struct TodayTab: View {
                 NotesCard(day: day)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button("Jump to today") {
-                        selectedDay = store.progress.currentDayNumber(in: schedule)
-                    }
-
-                    Button("Set today as Day 1") {
-                        store.resetTimeline()
-                        selectedDay = 1
-                    }
-                } label: {
-                    Image(systemName: "calendar.badge.clock")
-                }
-                .accessibilityLabel("Plan calendar actions")
-            }
-        }
     }
 }
 
@@ -140,30 +124,14 @@ private struct RoadmapTab: View {
             VStack(spacing: 18) {
                 RoadmapIntroCard()
 
-                GeneratedPlanCard(
+                QuestionBankRoadmapCard(
                     progress: store.progress,
-                    schedule: store.schedule,
-                    selectedDay: selectedDay,
-                    openDay: { day in
-                        selectedDay = day
-                        selectedTab = .today
+                    toggleProblem: { problem in
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                            store.toggleRoadmapProblem(problem)
+                        }
                     }
                 )
-
-                QuestionBankCard(schedule: store.schedule)
-
-                ForEach(RoadmapPhase.all) { phase in
-                    RoadmapPhaseCard(
-                        phase: phase,
-                        progress: store.progress,
-                        schedule: store.schedule,
-                        selectedDay: selectedDay,
-                        openDay: { day in
-                            selectedDay = day
-                            selectedTab = .today
-                        }
-                    )
-                }
             }
         }
     }
@@ -206,33 +174,9 @@ private struct GuideTab: View {
         StudyScreen(title: "Guide") {
             VStack(spacing: 18) {
                 GuideHeaderCard()
-                PlanSettingsCard(schedule: store.schedule)
+                GuideSetupCard(schedule: store.schedule)
                 ExtraPracticeCard()
-                GuideStepCard(
-                    number: "01",
-                    title: "Start the clock",
-                    bodyText: "Set a target finish date. The app deterministically spreads the 150 required questions across the available days."
-                )
-                GuideStepCard(
-                    number: "02",
-                    title: "Run the daily loop",
-                    bodyText: "Choose how much time you want to study each day. System design stays daily, pattern study is optional, and redo appears only when due."
-                )
-                GuideStepCard(
-                    number: "03",
-                    title: "Mark problem quality",
-                    bodyText: "Tap a problem row to cycle Todo -> Green -> Yellow -> Red. The problem block is complete when every planned question has a color."
-                )
-                GuideStepCard(
-                    number: "04",
-                    title: "Schedule red problems",
-                    bodyText: "When a problem turns Red, keep the automatic redo date or pick the exact date you want it to come back."
-                )
-                GuideStepCard(
-                    number: "05",
-                    title: "Add widgets",
-                    bodyText: "Add the medium Home Screen widget for daily status. Add the circular or rectangular Lock Screen widget for quick habit pressure without opening the app."
-                )
+                GuideRulesCard()
             }
         }
     }
@@ -241,142 +185,183 @@ private struct GuideTab: View {
 private struct OnboardingView: View {
     @EnvironmentObject private var store: StudyProgressStore
     @State private var appeared = false
+    @State private var page = 0
 
     private var schedule: StudySchedule { store.schedule }
+    private var problemMinutesText: String {
+        guard schedule.averageProblemsPerDay > 0 else { return "Enough time for today's plan." }
+        let minutes = Double(store.progress.settings.problemBlockMinutes) / schedule.averageProblemsPerDay
+        return minutes < 15
+            ? "Raise daily time. This plan gives about \(Int(minutes.rounded())) min per question, under the 15 min floor."
+            : "About \(Int(minutes.rounded())) min per question after the 20-minute design block."
+    }
+
+    private var canStart: Bool {
+        guard schedule.averageProblemsPerDay > 0 else { return true }
+        return Double(store.progress.settings.problemBlockMinutes) / schedule.averageProblemsPerDay >= 15
+    }
 
     var body: some View {
         ZStack {
             AppBackground()
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 18) {
-                    LiquidGlassCard(tint: Theme.accent, holographic: true) {
-                        VStack(alignment: .leading, spacing: 18) {
-                            HStack {
-                                Text("NeatHabit")
-                                    .eyebrow()
+            VStack(spacing: 18) {
+                HStack {
+                    Text("NeatHabit")
+                        .eyebrow()
+                    Spacer()
+                    Text("\(page + 1)/5")
+                        .font(.caption.weight(.black))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Theme.accent.opacity(0.12), in: Capsule())
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 18)
 
-                                Spacer()
-
-                                Text("\(schedule.requiredProblemCount) required")
-                                    .font(.caption.weight(.black))
-                                    .monospacedDigit()
-                                    .foregroundStyle(Theme.accent)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 7)
-                                    .background(Theme.accent.opacity(0.12), in: Capsule())
-                            }
-
-                            Text("Build the daily loop before the plan starts.")
-                                .font(.system(size: 38, weight: .black, design: .rounded))
-                                .tracking(-1.2)
-                                .foregroundStyle(Theme.ink)
-                                .lineSpacing(-2)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Text("Choose the finish date and study budget. The app spreads the fixed question bank, keeps pattern study optional, and brings red problems back on scheduled redo dates.")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(Theme.muted)
-                                .lineSpacing(2)
-                                .fixedSize(horizontal: false, vertical: true)
+                TabView(selection: $page) {
+                    OnboardingPageCard(
+                        eyebrow: "Start",
+                        title: "Make the plan feel automatic.",
+                        subtitle: "NeatHabit turns the 150-question bank into a daily interview loop. One screen, one decision at a time."
+                    ) {
+                        HStack(spacing: 10) {
+                            MetricTile(title: "Required", value: "\(schedule.requiredProblemCount)", symbol: "checklist", tint: Theme.accent)
+                            MetricTile(title: "Current pace", value: String(format: "%.1f/day", schedule.averageProblemsPerDay), symbol: "speedometer", tint: Theme.glassBlue)
                         }
                     }
+                    .tag(0)
 
-                    LiquidGlassCard(tint: Theme.glassBlue) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            SectionHeader(
-                                title: "Set the plan",
-                                subtitle: "These controls can still be changed later in Guide."
+                    OnboardingPageCard(
+                        eyebrow: "Finish",
+                        title: "When do you want the 150 done?",
+                        subtitle: "The plan spreads extra questions across the whole timeline instead of front-loading them."
+                    ) {
+                        DatePicker(
+                            "Target finish date",
+                            selection: Binding(
+                                get: { store.progress.settings.targetFinishDate },
+                                set: { store.updateTargetFinishDate($0) }
+                            ),
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(.graphical)
+                        .tint(Theme.accent)
+                        .padding(12)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    }
+                    .tag(1)
+
+                    OnboardingPageCard(
+                        eyebrow: "Time",
+                        title: "How much time can you actually give daily?",
+                        subtitle: problemMinutesText
+                    ) {
+                        VStack(spacing: 14) {
+                            Stepper(
+                                "\(store.progress.settings.dailyMinutes) minutes/day",
+                                value: Binding(
+                                    get: { store.progress.settings.dailyMinutes },
+                                    set: { store.updateDailyMinutes($0) }
+                                ),
+                                in: 80...600,
+                                step: 10
                             )
-
-                            VStack(spacing: 12) {
-                                DatePicker(
-                                    "Target finish date",
-                                    selection: Binding(
-                                        get: { store.progress.settings.targetFinishDate },
-                                        set: { store.updateTargetFinishDate($0) }
-                                    ),
-                                    displayedComponents: .date
-                                )
-                                .font(.subheadline.weight(.bold))
-
-                                Stepper(
-                                    "Daily time: \(store.progress.settings.dailyMinutes)m",
-                                    value: Binding(
-                                        get: { store.progress.settings.dailyMinutes },
-                                        set: { store.updateDailyMinutes($0) }
-                                    ),
-                                    in: 80...600,
-                                    step: 10
-                                )
-                                .font(.subheadline.weight(.bold))
-
-                                Toggle(
-                                    "Add optional pattern study",
-                                    isOn: Binding(
-                                        get: { store.progress.settings.includePatternStudy },
-                                        set: { store.updatePatternStudyEnabled($0) }
-                                    )
-                                )
-                                .font(.subheadline.weight(.bold))
-                            }
-                            .padding(14)
-                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            .font(.headline.weight(.black))
+                            .tint(Theme.accent)
 
                             HStack(spacing: 10) {
-                                MetricTile(title: "Plan days", value: "\(schedule.totalDays)", symbol: "calendar", tint: Theme.accent)
-                                MetricTile(title: "Problems/day", value: String(format: "%.1f", schedule.averageProblemsPerDay), symbol: "keyboard.fill", tint: Theme.green)
+                                MetricTile(title: "Problems/day", value: String(format: "%.1f", schedule.averageProblemsPerDay), symbol: "keyboard.fill", tint: Theme.accent)
+                                MetricTile(title: "Question time", value: "\(store.progress.settings.problemBlockMinutes)m", symbol: "timer", tint: canStart ? Theme.glassBlue : Theme.red)
                             }
                         }
+                        .padding(14)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                     }
+                    .tag(2)
 
-                    LiquidGlassCard(tint: Theme.amber) {
-                        VStack(alignment: .leading, spacing: 14) {
-                            SectionHeader(
-                                title: "The daily rule",
-                                subtitle: "No duplicate checkboxes for work you already recorded."
+                    OnboardingPageCard(
+                        eyebrow: "Reminder",
+                        title: "When are you most likely to do it?",
+                        subtitle: "NeatHabit will ask iOS for notification permission and schedule a daily reminder at this time."
+                    ) {
+                        VStack(spacing: 14) {
+                            DatePicker(
+                                "Reminder time",
+                                selection: Binding(
+                                    get: { store.progress.settings.reminderDate },
+                                    set: { store.updateReminderTime($0) }
+                                ),
+                                displayedComponents: .hourAndMinute
                             )
+                            .datePickerStyle(.wheel)
+                            .labelsHidden()
+                            .tint(Theme.accent)
 
-                            OnboardingStepRow(
-                                number: "01",
-                                title: "Solve the planned questions",
-                                bodyText: "The problem block is complete when every row has a color."
+                            Toggle(
+                                "Daily notification",
+                                isOn: Binding(
+                                    get: { store.progress.settings.notificationsEnabled },
+                                    set: { store.updateNotificationsEnabled($0) }
+                                )
                             )
-
-                            OnboardingStepRow(
-                                number: "02",
-                                title: "Use red as a redo signal",
-                                bodyText: "Mark red, then keep the automatic redo date or pick the exact date."
-                            )
-
-                            OnboardingStepRow(
-                                number: "03",
-                                title: "Keep system design daily",
-                                bodyText: "One focused design topic stays in the loop. Pattern study is optional."
-                            )
+                            .font(.headline.weight(.bold))
+                            .tint(Theme.accent)
                         }
+                        .padding(14)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    }
+                    .tag(3)
+
+                    OnboardingPageCard(
+                        eyebrow: "Ready",
+                        title: "Keep it lean. Adjust only what matters.",
+                        subtitle: "System design stays daily. Red questions come back on scheduled redo dates."
+                    ) {
+                        VStack(spacing: 14) {
+                            HStack(spacing: 10) {
+                                MetricTile(title: "Plan days", value: "\(schedule.totalDays)", symbol: "calendar", tint: Theme.accent)
+                                MetricTile(title: "Reminder", value: store.progress.settings.reminderDate.formatted(.dateTime.hour().minute()), symbol: "bell.fill", tint: Theme.glassBlue)
+                            }
+                        }
+                        .padding(14)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    }
+                    .tag(4)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+                HStack(spacing: 12) {
+                    if page > 0 {
+                        Button("Back") {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                                page -= 1
+                            }
+                        }
+                        .buttonStyle(.glass)
                     }
 
                     Button {
-                        store.completeOnboarding()
-                    } label: {
-                        HStack {
-                            Text("Start today")
-                                .font(.headline.weight(.black))
-                            Spacer()
-                            Image(systemName: "arrow.right")
-                                .font(.headline.weight(.black))
+                        if page < 4 {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                                page += 1
+                            }
+                        } else {
+                            store.completeOnboarding()
                         }
-                        .foregroundStyle(.white)
-                        .padding(18)
-                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .shadow(color: Theme.accent.opacity(0.28), radius: 22, x: 0, y: 14)
+                    } label: {
+                        Label(page == 4 ? "Start today" : "Next", systemImage: page == 4 ? "checkmark" : "arrow.right")
+                            .font(.headline.weight(.black))
+                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.bottom, 28)
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.accent)
+                    .disabled(page >= 2 && !canStart)
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 18)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 24)
             }
         }
         .opacity(appeared ? 1 : 0)
@@ -385,6 +370,54 @@ private struct OnboardingView: View {
             withAnimation(.smooth(duration: 0.55)) {
                 appeared = true
             }
+        }
+    }
+}
+
+private struct OnboardingPageCard<Content: View>: View {
+    let eyebrow: String
+    let title: String
+    let subtitle: String
+    let content: Content
+
+    init(eyebrow: String, title: String, subtitle: String, @ViewBuilder content: () -> Content) {
+        self.eyebrow = eyebrow
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 22) {
+                Spacer(minLength: 24)
+
+                LiquidGlassCard(tint: Theme.accent) {
+                    VStack(alignment: .center, spacing: 18) {
+                        Text(eyebrow)
+                            .eyebrow()
+                        Text(title)
+                            .font(AppFont.display(size: 38, weight: .black))
+                            .tracking(-1.2)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(Theme.ink)
+                            .lineSpacing(-2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(subtitle)
+                            .font(.subheadline.weight(.medium))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(Theme.muted)
+                            .lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        content
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                Spacer(minLength: 24)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 18)
         }
     }
 }
@@ -399,9 +432,9 @@ private struct OnboardingStepRow: View {
             Text(number)
                 .font(.caption.weight(.black))
                 .monospacedDigit()
-                .foregroundStyle(Theme.amber)
+                .foregroundStyle(Theme.accent)
                 .frame(width: 34, height: 34)
-                .background(Theme.amber.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -456,7 +489,7 @@ private struct HeroPanel: View {
     private var counts: StatusCounts { dailyProgress.counts(for: day) }
     private var fraction: Double { dailyProgress.completionFraction(for: day, settings: settings, hasRedoDue: hasRedoDue) }
     private var activeHabits: [StudyHabit] {
-        StudyHabit.activeCases(includePatternStudy: settings.includePatternStudy, hasRedoDue: hasRedoDue)
+        StudyHabit.activeCases(hasRedoDue: hasRedoDue)
     }
     private var activeHabitCount: Int {
         activeHabits.count
@@ -466,7 +499,7 @@ private struct HeroPanel: View {
     }
 
     var body: some View {
-        LiquidGlassCard(tint: Theme.accent, holographic: true) {
+        LiquidGlassCard(tint: Theme.accent) {
             VStack(alignment: .leading, spacing: 22) {
                 HStack(alignment: .top, spacing: 16) {
                     VStack(alignment: .leading, spacing: 9) {
@@ -474,21 +507,17 @@ private struct HeroPanel: View {
                             .eyebrow()
 
                         Text(day.topic)
-                            .font(.system(size: 34, weight: .black, design: .rounded))
+                            .font(AppFont.display(size: 34, weight: .black))
                             .tracking(-1.0)
                             .foregroundStyle(Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        Text(day.systemDesignFocus)
-                            .font(.subheadline.weight(.medium))
+                        Text("\(day.problems.count) planned problems")
+                            .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.muted)
-                            .lineSpacing(2)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer(minLength: 12)
-
-                    DayPill(day: day, currentDay: currentDay)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -504,27 +533,6 @@ private struct HeroPanel: View {
                 }
             }
         }
-    }
-}
-
-private struct DayPill: View {
-    let day: StudyDay
-    let currentDay: Int
-
-    var body: some View {
-        VStack(spacing: 3) {
-            Text(day.date.map(shortDateText) ?? "Day")
-                .font(.caption.weight(.black))
-                .monospacedDigit()
-            Text("D\(day.day)")
-                .font(.system(size: 23, weight: .black, design: .rounded))
-                .monospacedDigit()
-            Text(day.day == currentDay ? "today" : "planned")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Theme.muted)
-        }
-        .frame(width: 82, height: 82)
-        .glassEffect(.regular.tint(Theme.accent.opacity(0.16)).interactive(), in: .rect(cornerRadius: 28))
     }
 }
 
@@ -545,7 +553,7 @@ private struct HeroMetric: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .glassEffect(.regular.tint(Theme.surface.opacity(0.26)), in: .rect(cornerRadius: 18))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
@@ -554,51 +562,47 @@ private struct DaySelector: View {
     let progress: StoredProgress
     let schedule: StudySchedule
 
+    private var currentDay: Int { progress.currentDayNumber(in: schedule) }
+
     var body: some View {
-        GlassEffectContainer(spacing: 12) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(schedule.days) { day in
-                        let fraction = progress.completionFraction(for: day, in: schedule)
-                        let isSelected = selectedDay == day.day
-                        let isToday = progress.currentDayNumber(in: schedule) == day.day
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(schedule.days) { day in
+                    let fraction = progress.completionFraction(for: day, in: schedule)
+                    let isSelected = selectedDay == day.day
+                    let isToday = currentDay == day.day
 
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                                selectedDay = day.day
-                            }
-                        } label: {
-                            VStack(spacing: 5) {
-                                Text(day.date.map(shortDateText) ?? "Day")
-                                    .font(.caption2.weight(.black))
-                                    .lineLimit(1)
+                    Button {
+                        selectedDay = day.day
+                    } label: {
+                        VStack(spacing: 5) {
+                            Text(day.date.map(shortDateText) ?? "Day")
+                                .font(.caption2.weight(.black))
+                                .lineLimit(1)
 
-                                Text("D\(day.day)")
-                                    .font(.caption.weight(.black))
-                                    .monospacedDigit()
+                            Text("D\(day.day)")
+                                .font(.caption.weight(.black))
+                                .monospacedDigit()
 
-                                Circle()
-                                    .fill(progressColor(for: fraction))
-                                    .frame(width: isToday ? 8 : 6, height: isToday ? 8 : 6)
-                            }
-                            .foregroundStyle(isSelected ? Theme.ink : Theme.muted)
-                            .frame(width: 62, height: 62)
+                            Circle()
+                                .fill(progressColor(for: fraction))
+                                .frame(width: isToday ? 8 : 6, height: isToday ? 8 : 6)
                         }
-                        .buttonStyle(.plain)
-                        .glassEffect(
-                            .regular.tint((isSelected ? Theme.accent : Theme.surface).opacity(isSelected ? 0.22 : 0.18)).interactive(),
-                            in: .rect(cornerRadius: 18)
-                        )
+                        .foregroundStyle(isSelected ? Theme.ink : Theme.muted)
+                        .frame(width: 62, height: 62)
+                        .background((isSelected ? Theme.accent.opacity(0.16) : Theme.surface), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(isToday ? Theme.accent.opacity(0.72) : Theme.hairline.opacity(isSelected ? 0.7 : 0.38), lineWidth: isToday ? 1.5 : 1)
                         }
-                        .accessibilityLabel("Open day \(day.day), \(day.topic)")
+                        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open day \(day.day), \(day.topic)")
                 }
-                .padding(.vertical, 3)
-                .padding(.horizontal, 1)
             }
+            .padding(.vertical, 3)
+            .padding(.horizontal, 1)
         }
     }
 
@@ -607,11 +611,11 @@ private struct DaySelector: View {
         case 0:
             return Theme.muted.opacity(0.32)
         case 0..<0.5:
-            return Theme.amber
+            return Theme.accent.opacity(0.72)
         case 0..<1:
             return Theme.accent
         default:
-            return Theme.green
+            return Theme.accent
         }
     }
 }
@@ -627,19 +631,25 @@ private struct DailyFlowCard: View {
         LiquidGlassCard(tint: Theme.glassBlue) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(
-                    title: "Daily essentials",
-                    subtitle: "Problems complete from rows. Redo appears only when scheduled."
+                    title: "System design",
+                    subtitle: "One small design prompt per day. Mark it done after you can explain the tradeoffs out loud."
                 )
 
                 VStack(spacing: 11) {
-                    ForEach(StudyHabit.activeCases(includePatternStudy: settings.includePatternStudy, hasRedoDue: hasRedoDue)) { habit in
+                    SystemDesignFocusRow(
+                        focus: day.systemDesignFocus,
+                        completed: dailyProgress.completedHabits.contains(.systemDesign)
+                    ) {
+                        store.toggleHabit(.systemDesign, day: day.day)
+                    }
+
+                    if hasRedoDue {
                         HabitRow(
-                            habit: habit,
-                            systemDesignFocus: day.systemDesignFocus,
+                            habit: .review,
                             settings: settings,
-                            completed: dailyProgress.completedHabits.contains(habit)
+                            completed: dailyProgress.completedHabits.contains(.review)
                         ) {
-                            store.toggleHabit(habit, day: day.day)
+                            store.toggleHabit(.review, day: day.day)
                         }
                     }
                 }
@@ -648,16 +658,79 @@ private struct DailyFlowCard: View {
     }
 }
 
-private struct HabitRow: View {
-    let habit: StudyHabit
-    let systemDesignFocus: String
-    let settings: StudySettings
+private struct SystemDesignFocusRow: View {
+    let focus: String
     let completed: Bool
     let toggle: () -> Void
 
-    private var subtitle: String {
-        habit == .systemDesign ? systemDesignFocus : habit.subtitle
+    var body: some View {
+        Button(action: toggle) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    Image(systemName: completed ? "checkmark.circle.fill" : "sparkles.rectangle.stack.fill")
+                        .font(.title3.weight(.black))
+                        .foregroundStyle(completed ? Theme.accent : Theme.glassBlue)
+                        .frame(width: 44, height: 44)
+                        .background((completed ? Theme.accent : Theme.glassBlue).opacity(0.13), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("20-minute design rep")
+                            .font(.headline.weight(.black))
+                            .foregroundStyle(Theme.ink)
+                        Text(completed ? "Done for today" : "Read, sketch, then explain")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.muted)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                Text(focus)
+                    .font(.title3.weight(.black))
+                    .tracking(-0.35)
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    DesignStepChip(title: "Read")
+                    DesignStepChip(title: "Sketch")
+                    DesignStepChip(title: "Explain")
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(Theme.surface)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke((completed ? Theme.accent : Theme.glassBlue).opacity(0.35), lineWidth: 1)
+            }
+            .shadow(color: Theme.cardShadow.opacity(0.12), radius: 18, x: 0, y: 12)
+        }
+        .buttonStyle(.plain)
     }
+}
+
+private struct DesignStepChip: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.caption.weight(.black))
+            .foregroundStyle(Theme.glassBlue)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Theme.glassBlue.opacity(0.11), in: Capsule())
+    }
+}
+
+private struct HabitRow: View {
+    let habit: StudyHabit
+    let settings: StudySettings
+    let completed: Bool
+    let toggle: () -> Void
 
     var body: some View {
         Button(action: toggle) {
@@ -668,7 +741,7 @@ private struct HabitRow: View {
 
                     Image(systemName: completed ? "checkmark" : habit.systemImage)
                         .font(.headline.weight(.black))
-                        .foregroundStyle(completed ? Theme.green : habit.tint)
+                        .foregroundStyle(completed ? Theme.accent : habit.tint)
                 }
                 .frame(width: 42, height: 42)
 
@@ -687,7 +760,7 @@ private struct HabitRow: View {
                             .background(habit.tint.opacity(0.12), in: Capsule())
                     }
 
-                    Text(subtitle)
+                    Text(habit.subtitle)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(Theme.muted)
                         .lineSpacing(1)
@@ -698,15 +771,15 @@ private struct HabitRow: View {
             }
             .padding(13)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(completed ? Theme.green.opacity(0.09) : Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(completed ? Theme.accent.opacity(0.09) : Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay(alignment: .trailing) {
                 Image(systemName: completed ? "checkmark.circle.fill" : "circle")
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(completed ? Theme.green : Theme.muted.opacity(0.55))
+                    .foregroundStyle(completed ? Theme.accent : Theme.muted.opacity(0.55))
                     .padding(.trailing, 12)
             }
         }
-        .buttonStyle(.glass)
+        .buttonStyle(.plain)
     }
 }
 
@@ -731,7 +804,7 @@ private struct ProblemsCard: View {
                     Spacer()
 
                     if problemBlockComplete {
-                        CompletionBadge(title: "Complete", color: Theme.green)
+                        CompletionBadge(title: "Complete", color: Theme.accent)
                     } else {
                         StatusCountCluster(counts: counts)
                     }
@@ -967,15 +1040,14 @@ private struct RedoScheduleSheet: View {
 
                 HStack(alignment: .top, spacing: 14) {
                     Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
-                        .font(.system(size: 38, weight: .black))
+                        .font(AppFont.display(size: 38, weight: .black))
                         .foregroundStyle(Theme.red)
-                        .symbolEffect(.pulse, value: appeared)
 
                     VStack(alignment: .leading, spacing: 7) {
                         Text("Red means redo")
                             .eyebrow(color: Theme.red)
                         Text("Schedule the next attempt")
-                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .font(AppFont.display(size: 28, weight: .black))
                             .tracking(-0.7)
                             .foregroundStyle(Theme.ink)
                         Text(problem)
@@ -1016,6 +1088,7 @@ private struct RedoScheduleSheet: View {
                         displayedComponents: .date
                     )
                     .font(.subheadline.weight(.bold))
+                    .tint(Theme.accent)
                     .padding(12)
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
@@ -1058,7 +1131,7 @@ private struct RedoQueueCard: View {
     let openDay: (Int) -> Void
 
     var body: some View {
-        LiquidGlassCard(tint: candidates.isEmpty ? Theme.green : Theme.red) {
+        LiquidGlassCard(tint: candidates.isEmpty ? Theme.accent : Theme.red) {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(
                     title: "Redo due",
@@ -1118,7 +1191,7 @@ private struct NotesCard: View {
     let day: StudyDay
 
     var body: some View {
-        LiquidGlassCard(tint: Theme.amber) {
+        LiquidGlassCard(tint: Theme.glassBlue) {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(
                     title: "Study notes",
@@ -1152,16 +1225,15 @@ private struct NotesCard: View {
 
 private struct RoadmapIntroCard: View {
     var body: some View {
-        LiquidGlassCard(tint: Theme.accent, holographic: true) {
+        LiquidGlassCard(tint: Theme.accent) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Roadmap")
                     .eyebrow()
-                Text("A generated plan from a fixed 150-question bank.")
-                    .font(.system(size: 30, weight: .black, design: .rounded))
+                Text("The full 150-question bank, grouped by category.")
+                    .font(AppFont.display(size: 30, weight: .black))
                     .tracking(-0.8)
                     .foregroundStyle(Theme.ink)
-                Text("Target date controls the number of days. Daily time controls the problem block and capacity warning. No AI scheduling guesswork."
-                )
+                Text("Questions auto-check when you mark them from Today. You can also check ahead here, and future days rebalance around work already done.")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1170,161 +1242,28 @@ private struct RoadmapIntroCard: View {
     }
 }
 
-private struct GeneratedPlanCard: View {
+private struct QuestionBankRoadmapCard: View {
     let progress: StoredProgress
-    let schedule: StudySchedule
-    let selectedDay: Int
-    let openDay: (Int) -> Void
+    let toggleProblem: (String) -> Void
 
-    private let columns = [GridItem(.adaptive(minimum: 138), spacing: 10)]
+    private var completedRequiredCount: Int {
+        StudyPlanner.requiredProblemTitles.filter { progress.status(for: $0) != .untouched }.count
+    }
 
     var body: some View {
         LiquidGlassCard(tint: Theme.accent) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(
-                    title: "Generated days",
-                    subtitle: "All \(schedule.requiredProblemCount) required questions are distributed across \(schedule.totalDays) days."
+                    title: "Question checklist",
+                    subtitle: "\(completedRequiredCount)/\(StudyPlanner.requiredProblemCount) required questions touched. Tap a row to check or clear it."
                 )
 
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(schedule.days) { day in
-                        RoadmapDayButton(
-                            day: day,
-                            fraction: progress.completionFraction(for: day, in: schedule),
-                            isSelected: selectedDay == day.day,
-                            isToday: progress.currentDayNumber(in: schedule) == day.day,
-                            tint: Theme.accent,
-                            action: { openDay(day.day) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private struct QuestionBankCard: View {
-    let schedule: StudySchedule
-
-    var body: some View {
-        LiquidGlassCard(tint: Theme.glassBlue) {
-            VStack(alignment: .leading, spacing: 14) {
-                SectionHeader(
-                    title: "Question bank",
-                    subtitle: "The planner consumes these sections in order, then appends optional extras."
-                )
-
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 10) {
-                        MetricTile(title: "Required", value: "\(schedule.requiredProblemCount)", symbol: "checklist", tint: Theme.accent)
-                        MetricTile(title: "Sections", value: "\(StudyPlanner.sections.count)", symbol: "square.grid.2x2.fill", tint: Theme.glassBlue)
-                    }
-
-                    HStack(spacing: 10) {
-                        MetricTile(title: "Plan days", value: "\(schedule.totalDays)", symbol: "calendar", tint: Theme.green)
-                        MetricTile(title: "Avg/day", value: String(format: "%.1f", schedule.averageProblemsPerDay), symbol: "chart.line.uptrend.xyaxis", tint: Theme.amber)
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("First stretch")
-                            .font(.caption.weight(.black))
-                            .foregroundStyle(Theme.muted)
-
-                        ForEach(Array(StudyPlanner.sections.prefix(3))) { section in
-                            HStack(spacing: 8) {
-                                Text("\(section.problems.count)")
-                                    .font(.caption.weight(.black))
-                                    .monospacedDigit()
-                                    .foregroundStyle(Theme.accent)
-                                    .frame(width: 28, height: 28)
-                                    .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-                                Text(section.title)
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(Theme.ink)
-
-                                Spacer()
-                            }
-                        }
-                    }
-                    .padding(12)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                }
-
-                VStack(spacing: 10) {
+                LazyVStack(spacing: 14) {
                     ForEach(StudyPlanner.sections) { section in
-                        HStack(alignment: .top, spacing: 12) {
-                            Text("\(section.problems.count)")
-                                .font(.headline.weight(.black))
-                                .monospacedDigit()
-                                .foregroundStyle(Theme.accent)
-                                .frame(width: 40, height: 40)
-                                .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(section.title)
-                                    .font(.subheadline.weight(.black))
-                                    .foregroundStyle(Theme.ink)
-                                Text(section.template)
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(Theme.muted)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        .padding(12)
-                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    }
-                }
-            }
-        }
-    }
-}
-
-private struct RoadmapPhaseCard: View {
-    let phase: RoadmapPhase
-    let progress: StoredProgress
-    let schedule: StudySchedule
-    let selectedDay: Int
-    let openDay: (Int) -> Void
-
-    private let columns = [GridItem(.adaptive(minimum: 138), spacing: 10)]
-
-    var body: some View {
-        LiquidGlassCard(tint: phase.tint) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(phase.label)
-                            .eyebrow(color: phase.tint)
-                        Text(phase.title)
-                            .font(.title3.weight(.black))
-                            .foregroundStyle(Theme.ink)
-                        Text(phase.subtitle)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Theme.muted)
-                    }
-
-                    Spacer()
-
-                    Text(phase.dayRangeText)
-                        .font(.caption.weight(.black))
-                        .monospacedDigit()
-                        .foregroundStyle(phase.tint)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(phase.tint.opacity(0.12), in: Capsule())
-                }
-
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(Array(phase.days).filter { $0 <= schedule.totalDays }, id: \.self) { dayNumber in
-                        let planDay = schedule.day(dayNumber)
-                        RoadmapDayButton(
-                            day: planDay,
-                            fraction: progress.completionFraction(for: planDay, in: schedule),
-                            isSelected: selectedDay == dayNumber,
-                            isToday: progress.currentDayNumber(in: schedule) == dayNumber,
-                            tint: phase.tint,
-                            action: { openDay(dayNumber) }
+                        RoadmapSectionBlock(
+                            section: section,
+                            progress: progress,
+                            toggleProblem: toggleProblem
                         )
                     }
                 }
@@ -1333,59 +1272,90 @@ private struct RoadmapPhaseCard: View {
     }
 }
 
-private struct RoadmapDayButton: View {
-    let day: StudyDay
-    let fraction: Double
-    let isSelected: Bool
-    let isToday: Bool
-    let tint: Color
-    let action: () -> Void
+private struct RoadmapSectionBlock: View {
+    let section: ProblemSection
+    let progress: StoredProgress
+    let toggleProblem: (String) -> Void
+
+    private var completedCount: Int {
+        section.problems.filter { progress.status(for: $0) != .untouched }.count
+    }
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 9) {
-                HStack {
-                    Text(day.date.map(shortDateText) ?? "D\(day.day)")
-                        .font(.caption.weight(.black))
-                        .monospacedDigit()
-                        .foregroundStyle(isSelected ? tint : Theme.muted)
-                    Spacer()
-                    Circle()
-                        .fill(progressColor)
-                        .frame(width: 8, height: 8)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(section.title)
+                        .font(.headline.weight(.black))
+                        .foregroundStyle(Theme.ink)
+                    Text(section.template)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text("D\(day.day)")
-                    .font(.caption2.weight(.black))
-                    .foregroundStyle(Theme.muted)
-                    .monospacedDigit()
+                Spacer(minLength: 12)
 
-                Text(day.topic)
-                    .font(.caption.weight(.bold))
+                Text("\(completedCount)/\(section.problems.count)")
+                    .font(.caption.weight(.black))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.accent)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(Theme.accent.opacity(0.11), in: Capsule())
+            }
+
+            VStack(spacing: 8) {
+                ForEach(section.problems, id: \.self) { problem in
+                    RoadmapProblemChecklistRow(
+                        problem: problem,
+                        status: progress.status(for: problem),
+                        toggle: { toggleProblem(problem) }
+                    )
+                }
+            }
+        }
+        .padding(13)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
+private struct RoadmapProblemChecklistRow: View {
+    let problem: String
+    let status: ProblemStatus
+    let toggle: () -> Void
+
+    private var isChecked: Bool { status != .untouched }
+
+    var body: some View {
+        Button(action: toggle) {
+            HStack(spacing: 12) {
+                Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(isChecked ? status.tint : Theme.muted.opacity(0.55))
+
+                Text(problem)
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 8)
+
+                if isChecked {
+                    Text(status.shortTitle)
+                        .font(.caption.weight(.black))
+                        .foregroundStyle(status.tint)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 6)
+                        .background(status.tint.opacity(0.12), in: Capsule())
+                }
             }
-            .padding(12)
-            .frame(minHeight: 86, alignment: .top)
-            .background((isSelected ? tint.opacity(0.12) : Theme.surface), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(isToday ? Theme.accent.opacity(0.65) : Theme.hairline.opacity(0.35), lineWidth: isToday ? 1.5 : 1)
-            }
+            .padding(11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isChecked ? status.tint.opacity(0.08) : Theme.cardFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
-    }
-
-    private var progressColor: Color {
-        switch fraction {
-        case 0:
-            return Theme.muted.opacity(0.28)
-        case 0..<1:
-            return Theme.amber
-        default:
-            return Theme.green
-        }
+        .accessibilityLabel("\(isChecked ? "Clear" : "Check") \(problem)")
     }
 }
 
@@ -1393,7 +1363,7 @@ private struct ProgressHeroCard: View {
     let summary: PlanSummary
 
     var body: some View {
-        LiquidGlassCard(tint: Theme.accent, holographic: true) {
+        LiquidGlassCard(tint: Theme.accent) {
             HStack(spacing: 18) {
                 ProgressRing(fraction: summary.completionFraction, tint: Theme.accent)
                     .frame(width: 108, height: 108)
@@ -1528,7 +1498,7 @@ private struct HabitStatsCard: View {
 
 private struct StatusLegendCard: View {
     var body: some View {
-        LiquidGlassCard(tint: Theme.amber) {
+        LiquidGlassCard(tint: Theme.glassBlue) {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(
                     title: "Color rules",
@@ -1622,12 +1592,12 @@ private struct UpcomingCard: View {
 
 private struct GuideHeaderCard: View {
     var body: some View {
-        LiquidGlassCard(tint: Theme.accent, holographic: true) {
+        LiquidGlassCard(tint: Theme.accent) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("How to use NeatHabit")
                     .eyebrow()
-                Text("Set the target, finish the required 150, add extras only if you want more practice.")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
+                Text("Adjust setup only when the plan needs to change.")
+                    .font(AppFont.display(size: 28, weight: .black))
                     .tracking(-0.7)
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1636,7 +1606,7 @@ private struct GuideHeaderCard: View {
     }
 }
 
-private struct PlanSettingsCard: View {
+private struct GuideSetupCard: View {
     @EnvironmentObject private var store: StudyProgressStore
     let schedule: StudySchedule
 
@@ -1644,49 +1614,15 @@ private struct PlanSettingsCard: View {
         LiquidGlassCard(tint: Theme.accent) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(
-                    title: "Plan controls",
-                    subtitle: "The plan includes all 150 required questions. Redo dates are scheduled from red marks."
+                    title: "Plan setup",
+                    subtitle: "Use onboarding when you want to change the plan shape."
                 )
-
-                VStack(spacing: 12) {
-                    DatePicker(
-                        "Target finish date",
-                        selection: Binding(
-                            get: { store.progress.settings.targetFinishDate },
-                            set: { store.updateTargetFinishDate($0) }
-                        ),
-                        displayedComponents: .date
-                    )
-                    .font(.subheadline.weight(.bold))
-
-                    Stepper(
-                        "Daily time: \(store.progress.settings.dailyMinutes)m",
-                        value: Binding(
-                            get: { store.progress.settings.dailyMinutes },
-                            set: { store.updateDailyMinutes($0) }
-                        ),
-                        in: 80...600,
-                        step: 10
-                    )
-                    .font(.subheadline.weight(.bold))
-
-                    Toggle(
-                        "Include optional pattern study",
-                        isOn: Binding(
-                            get: { store.progress.settings.includePatternStudy },
-                            set: { store.updatePatternStudyEnabled($0) }
-                        )
-                    )
-                    .font(.subheadline.weight(.bold))
-                }
-                .padding(14)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                     MetricTile(title: "Plan days", value: "\(schedule.totalDays)", symbol: "calendar", tint: Theme.accent)
-                    MetricTile(title: "Required", value: "\(schedule.requiredProblemCount)", symbol: "checklist", tint: Theme.green)
-                    MetricTile(title: "Extras", value: "\(schedule.extraProblemCount)", symbol: "plus.circle.fill", tint: Theme.glassBlue)
-                    MetricTile(title: "Block", value: "\(schedule.settings.problemBlockMinutes)m", symbol: "timer", tint: Theme.amber)
+                    MetricTile(title: "Target", value: shortDateText(schedule.settings.targetFinishDate), symbol: "flag.checkered", tint: Theme.glassBlue)
+                    MetricTile(title: "Daily", value: "\(schedule.settings.dailyMinutes)m", symbol: "timer", tint: Theme.glassBlue)
+                    MetricTile(title: "Reminder", value: schedule.settings.reminderDate.formatted(.dateTime.hour().minute()), symbol: "bell.fill", tint: Theme.glassBlue)
                 }
 
                 if schedule.dailyLoadIsOverCapacity {
@@ -1697,102 +1633,155 @@ private struct PlanSettingsCard: View {
                     )
                 }
 
-                HStack(spacing: 10) {
-                    Button("Reset timeline") {
-                        store.resetTimeline()
+                VStack(spacing: 10) {
+                    Button {
+                        store.restartOnboarding()
+                    } label: {
+                        Label("Redo onboarding", systemImage: "rectangle.portrait.and.arrow.right")
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.glass)
 
-                    Button("Clear progress") {
-                        store.clearAllProgressKeepPlan()
+                    Button(role: .destructive) {
+                        store.restartOnboarding(resetTimeline: true)
+                    } label: {
+                        Label("Reset timeline + redo onboarding", systemImage: "calendar.badge.clock")
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.glass)
                 }
             }
         }
+    }
+}
+
+private struct GuideRulesCard: View {
+    var body: some View {
+        LiquidGlassCard(tint: Theme.glassBlue) {
+            VStack(alignment: .leading, spacing: 14) {
+                SectionHeader(
+                    title: "Rules",
+                    subtitle: "The app only tracks decisions that change what you do next."
+                )
+
+                GuideRuleRow(
+                    symbol: "checklist",
+                    title: "Problem block",
+                    bodyText: "Complete when every planned question has a color."
+                )
+
+                GuideRuleRow(
+                    symbol: "calendar.badge.clock",
+                    title: "Red status",
+                    bodyText: "Schedules a redo date. There is no separate redo color."
+                )
+
+                GuideRuleRow(
+                    symbol: "server.rack",
+                    title: "System design",
+                    bodyText: "One focused topic stays in the daily loop."
+                )
+            }
+        }
+    }
+}
+
+private struct GuideRuleRow: View {
+    let symbol: String
+    let title: String
+    let bodyText: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 38, height: 38)
+                .background(Theme.accent.opacity(0.11), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.black))
+                    .foregroundStyle(Theme.ink)
+                Text(bodyText)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
 private struct ExtraPracticeCard: View {
     @EnvironmentObject private var store: StudyProgressStore
+    @State private var isExpanded = false
     @State private var title = ""
     @State private var section = "Extra Practice"
 
     var body: some View {
         LiquidGlassCard(tint: Theme.glassBlue) {
-            VStack(alignment: .leading, spacing: 14) {
-                SectionHeader(
-                    title: "Optional extras",
-                    subtitle: "Extras are added after the required 150 and included in the generated plan."
-                )
+            DisclosureGroup(isExpanded: $isExpanded) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Use this only for questions outside the required 150.")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.muted)
 
-                VStack(spacing: 10) {
-                    TextField("Problem name", text: $title)
-                        .textFieldStyle(.roundedBorder)
-                    TextField("Section", text: $section)
-                        .textFieldStyle(.roundedBorder)
+                    VStack(spacing: 10) {
+                        TextField("Problem name", text: $title)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Section", text: $section)
+                            .textFieldStyle(.roundedBorder)
 
-                    Button("Add extra problem") {
-                        store.addExtraProblem(title: title, sectionTitle: section)
-                        title = ""
-                        section = "Extra Practice"
+                        Button("Add extra problem") {
+                            store.addExtraProblem(title: title, sectionTitle: section)
+                            title = ""
+                            section = "Extra Practice"
+                        }
+                        .buttonStyle(.glass)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.glass)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
 
-                if !store.progress.settings.extraProblems.isEmpty {
-                    VStack(spacing: 8) {
-                        ForEach(store.progress.settings.extraProblems) { problem in
-                            HStack(spacing: 10) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(problem.title)
-                                        .font(.subheadline.weight(.bold))
-                                        .foregroundStyle(Theme.ink)
-                                    Text(problem.sectionTitle)
-                                        .font(.caption.weight(.medium))
-                                        .foregroundStyle(Theme.muted)
+                    if !store.progress.settings.extraProblems.isEmpty {
+                        VStack(spacing: 8) {
+                            ForEach(store.progress.settings.extraProblems) { problem in
+                                HStack(spacing: 10) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(problem.title)
+                                            .font(.subheadline.weight(.bold))
+                                            .foregroundStyle(Theme.ink)
+                                        Text(problem.sectionTitle)
+                                            .font(.caption.weight(.medium))
+                                            .foregroundStyle(Theme.muted)
+                                    }
+                                    Spacer()
+                                    Button("Remove") {
+                                        store.removeExtraProblem(problem)
+                                    }
+                                    .font(.caption.weight(.bold))
                                 }
-                                Spacer()
-                                Button("Remove") {
-                                    store.removeExtraProblem(problem)
-                                }
-                                .font(.caption.weight(.bold))
+                                .padding(12)
+                                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                             }
-                            .padding(12)
-                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                         }
                     }
                 }
-            }
-        }
-    }
-}
+                .padding(.top, 12)
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Optional extras")
+                            .font(.title3.weight(.black))
+                            .foregroundStyle(Theme.ink)
+                        Text("\(store.progress.settings.extraProblems.count) added")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.muted)
+                    }
 
-private struct GuideStepCard: View {
-    let number: String
-    let title: String
-    let bodyText: String
-
-    var body: some View {
-        LiquidGlassCard(tint: Theme.glassBlue) {
-            HStack(alignment: .top, spacing: 14) {
-                Text(number)
-                    .font(.headline.weight(.black))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 48, height: 48)
-                    .glassEffect(.regular.tint(Theme.accent.opacity(0.16)), in: .rect(cornerRadius: 18))
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(.headline.weight(.black))
-                        .foregroundStyle(Theme.ink)
-                    Text(bodyText)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.muted)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
                 }
             }
         }
@@ -1808,9 +1797,9 @@ private struct EmptyStateRow: View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
                 .font(.title3.weight(.bold))
-                .foregroundStyle(Theme.green)
+                .foregroundStyle(Theme.accent)
                 .frame(width: 42, height: 42)
-                .background(Theme.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -1895,12 +1884,10 @@ private struct SectionHeader: View {
 
 private struct LiquidGlassCard<Content: View>: View {
     let tint: Color
-    let holographic: Bool
     let content: Content
 
-    init(tint: Color = Theme.accent, holographic: Bool = false, @ViewBuilder content: () -> Content) {
+    init(tint: Color = Theme.accent, @ViewBuilder content: () -> Content) {
         self.tint = tint
-        self.holographic = holographic
         self.content = content()
     }
 
@@ -1910,159 +1897,58 @@ private struct LiquidGlassCard<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .fill(Theme.cardFill.opacity(0.54))
-                    }
-                    .overlay {
-                        if holographic {
-                            HolographicWash()
-                                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                        }
-                    }
+                    .fill(Theme.cardFill)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [Theme.cardHighlight.opacity(0.78), tint.opacity(0.26), Theme.hairline.opacity(0.32)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
+                    .strokeBorder(Theme.hairline.opacity(0.56), lineWidth: 1)
             }
-            .glassEffect(.regular.tint(tint.opacity(0.12)), in: .rect(cornerRadius: 30))
             .shadow(color: Theme.cardShadow.opacity(0.18), radius: 24, x: 0, y: 18)
-    }
-}
-
-private struct HolographicWash: View {
-    var body: some View {
-        ZStack {
-            AngularGradient(
-                colors: [
-                    Theme.accent.opacity(0.0),
-                    Theme.accent.opacity(0.28),
-                    Theme.amber.opacity(0.18),
-                    Theme.glassBlue.opacity(0.24),
-                    Theme.accent.opacity(0.0)
-                ],
-                center: .topTrailing,
-                angle: .degrees(18)
-            )
-            .blur(radius: 18)
-
-            LinearGradient(
-                colors: [Theme.cardHighlight.opacity(0.42), .clear, Theme.cardHighlight.opacity(0.16)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        .blendMode(.plusLighter)
-        .opacity(0.72)
     }
 }
 
 private struct AppBackground: View {
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Theme.canvasTop, Theme.canvas, Theme.canvasBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            Circle()
-                .fill(Theme.accent.opacity(0.16))
-                .frame(width: 260, height: 260)
-                .blur(radius: 38)
-                .offset(x: -160, y: -260)
-
-            Circle()
-                .fill(Theme.amber.opacity(0.14))
-                .frame(width: 220, height: 220)
-                .blur(radius: 44)
-                .offset(x: 160, y: -90)
-
-            Circle()
-                .fill(Theme.glassBlue.opacity(0.17))
-                .frame(width: 280, height: 280)
-                .blur(radius: 52)
-                .offset(x: 130, y: 330)
-        }
+        Theme.canvas
         .ignoresSafeArea()
     }
 }
 
-private struct RoadmapPhase: Identifiable {
-    let id: String
-    let label: String
-    let title: String
-    let subtitle: String
-    let days: ClosedRange<Int>
-    let tint: Color
+private enum AppFont {
+    static func body(size: CGFloat = 15, weight: Font.Weight = .regular) -> Font {
+        .custom(postScriptName(for: weight), size: size, relativeTo: .body)
+    }
 
-    var dayRangeText: String { "D\(days.lowerBound)-D\(days.upperBound)" }
+    static func display(size: CGFloat, weight: Font.Weight = .black) -> Font {
+        .custom(postScriptName(for: weight), size: size, relativeTo: .largeTitle)
+    }
 
-    static let all = [
-        RoadmapPhase(
-            id: "foundations",
-            label: "Phase 1",
-            title: "Foundations and pointers",
-            subtitle: "Arrays, hashing, two pointers, sliding windows, stack, binary search.",
-            days: 1...7,
-            tint: Theme.accent
-        ),
-        RoadmapPhase(
-            id: "structures",
-            label: "Phase 2",
-            title: "Core data structures",
-            subtitle: "Linked lists, trees, heaps, tries, and the harder design-style structures.",
-            days: 8...15,
-            tint: Theme.glassBlue
-        ),
-        RoadmapPhase(
-            id: "search",
-            label: "Phase 3",
-            title: "Search space and graphs",
-            subtitle: "Backtracking, grid traversal, graph modeling, topo sort, shortest path.",
-            days: 16...21,
-            tint: Theme.amber
-        ),
-        RoadmapPhase(
-            id: "dp",
-            label: "Phase 4",
-            title: "Dynamic programming",
-            subtitle: "Memo first, then bottom-up, with 1D, 2D, and final boss problems.",
-            days: 22...26,
-            tint: Theme.green
-        ),
-        RoadmapPhase(
-            id: "finish",
-            label: "Phase 5",
-            title: "Intervals, greedy, math",
-            subtitle: "Finish with scheduling, greedy decisions, matrix work, and bit manipulation.",
-            days: 27...30,
-            tint: Theme.red
-        )
-    ]
+    private static func postScriptName(for weight: Font.Weight) -> String {
+        switch weight {
+        case .black, .heavy:
+            return "AvenirNext-Heavy"
+        case .bold:
+            return "AvenirNext-Bold"
+        case .semibold:
+            return "AvenirNext-DemiBold"
+        case .medium:
+            return "AvenirNext-Medium"
+        default:
+            return "AvenirNext-Regular"
+        }
+    }
 }
 
 private enum Theme {
-    static let ink = dynamic(light: (0.075, 0.092, 0.125), dark: (0.90, 0.94, 0.92))
-    static let muted = dynamic(light: (0.35, 0.39, 0.43), dark: (0.65, 0.71, 0.68))
-    static let canvasTop = dynamic(light: (0.96, 0.975, 0.965), dark: (0.045, 0.060, 0.070))
-    static let canvas = dynamic(light: (0.925, 0.95, 0.935), dark: (0.060, 0.082, 0.090))
-    static let canvasBottom = dynamic(light: (0.875, 0.91, 0.90), dark: (0.035, 0.050, 0.060))
-    static let surface = dynamic(light: (0.985, 1.0, 0.98), dark: (0.105, 0.135, 0.14)).opacity(0.82)
-    static let cardFill = dynamic(light: (0.985, 1.0, 0.98), dark: (0.075, 0.098, 0.105))
-    static let cardHighlight = dynamic(light: (1.0, 1.0, 1.0), dark: (0.34, 0.42, 0.40))
-    static let hairline = dynamic(light: (1.0, 1.0, 1.0), dark: (0.28, 0.36, 0.34))
-    static let cardShadow = dynamic(light: (0.07, 0.11, 0.10), dark: (0.0, 0.0, 0.0))
-    static let accent = Color(red: 0.06, green: 0.52, blue: 0.45)
-    static let glassBlue = Color(red: 0.18, green: 0.42, blue: 0.66)
+    static let ink = dynamic(light: (0.070, 0.080, 0.105), dark: (0.90, 0.92, 0.96))
+    static let muted = dynamic(light: (0.36, 0.39, 0.46), dark: (0.64, 0.68, 0.76))
+    static let canvas = dynamic(light: (0.955, 0.965, 0.98), dark: (0.050, 0.056, 0.070))
+    static let surface = dynamic(light: (0.985, 0.99, 1.0), dark: (0.095, 0.105, 0.13)).opacity(0.88)
+    static let cardFill = dynamic(light: (0.992, 0.995, 1.0), dark: (0.070, 0.078, 0.098))
+    static let hairline = dynamic(light: (0.82, 0.86, 0.92), dark: (0.20, 0.23, 0.29))
+    static let cardShadow = dynamic(light: (0.08, 0.11, 0.18), dark: (0.0, 0.0, 0.0))
+    static let accent = Color(red: 0.16, green: 0.38, blue: 0.86)
+    static let glassBlue = Color(red: 0.38, green: 0.43, blue: 0.56)
     static let green = Color(red: 0.20, green: 0.58, blue: 0.34)
     static let amber = Color(red: 0.78, green: 0.49, blue: 0.16)
     static let red = Color(red: 0.72, green: 0.25, blue: 0.24)
@@ -2093,7 +1979,7 @@ private extension StudyHabit {
         case .problems:
             return Theme.accent
         case .review:
-            return Theme.amber
+            return Theme.red
         case .systemDesign:
             return Theme.ink
         }

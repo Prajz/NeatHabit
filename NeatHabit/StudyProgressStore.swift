@@ -1,8 +1,10 @@
 import Combine
 import Foundation
+import UserNotifications
 import WidgetKit
 
 private let onboardingStorageKey = "neatHabit.onboarding.v1"
+private let dailyReminderIdentifier = "neatHabit.dailyReminder"
 
 @MainActor
 final class StudyProgressStore: ObservableObject {
@@ -95,17 +97,29 @@ final class StudyProgressStore: ObservableObject {
         commit(nextProgress)
     }
 
+    func updateReminderTime(_ date: Date) {
+        var nextProgress = progress
+        let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+        nextProgress.settings.reminderHour = min(max(components.hour ?? 19, 0), 23)
+        nextProgress.settings.reminderMinute = min(max(components.minute ?? 0, 0), 59)
+        commit(nextProgress)
+    }
+
+    func updateNotificationsEnabled(_ enabled: Bool) {
+        var nextProgress = progress
+        nextProgress.settings.notificationsEnabled = enabled
+        commit(nextProgress)
+
+        if !enabled {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [dailyReminderIdentifier])
+        }
+    }
+
     func updateTargetFinishDate(_ date: Date) {
         var nextProgress = progress
         let start = Calendar.current.startOfDay(for: nextProgress.startDate)
         let target = Calendar.current.startOfDay(for: date)
         nextProgress.settings.targetFinishDate = max(target, start)
-        commit(nextProgress)
-    }
-
-    func updatePatternStudyEnabled(_ enabled: Bool) {
-        var nextProgress = progress
-        nextProgress.settings.includePatternStudy = enabled
         commit(nextProgress)
     }
 
@@ -130,6 +144,32 @@ final class StudyProgressStore: ObservableObject {
         commit(nextProgress)
     }
 
+    func toggleRoadmapProblem(_ problem: String) {
+        if progress.status(for: problem) == .untouched {
+            setStatus(.green, for: problem, day: plannedDay(for: problem))
+        } else {
+            clearProblemStatus(problem)
+        }
+    }
+
+    private func clearProblemStatus(_ problem: String) {
+        var nextProgress = progress
+
+        for day in nextProgress.dayProgress.keys {
+            var daily = nextProgress.dailyProgress(for: day)
+            daily.problemStatuses.removeValue(forKey: problem)
+            daily.redoDates.removeValue(forKey: problem)
+            nextProgress.dayProgress[day] = daily
+        }
+
+        commit(nextProgress)
+    }
+
+    private func plannedDay(for problem: String) -> Int {
+        let baseSchedule = StudyPlanner.plan(startDate: progress.startDate, settings: progress.settings)
+        return baseSchedule.days.first { $0.problems.contains(problem) }?.day ?? progress.currentDayNumber(in: schedule)
+    }
+
     func resetTimeline(startDate: Date = Date(), keepSettings: Bool = true) {
         let start = Calendar.current.startOfDay(for: startDate)
         let currentSettings = keepSettings ? progress.settings : StudySettings()
@@ -145,6 +185,10 @@ final class StudyProgressStore: ObservableObject {
     func completeOnboarding() {
         hasCompletedOnboarding = true
         onboardingDefaults.set(true, forKey: onboardingStorageKey)
+
+        Task {
+            await scheduleDailyReminderIfNeeded()
+        }
     }
 
     func restartOnboarding(resetTimeline: Bool = false) {
@@ -160,5 +204,36 @@ final class StudyProgressStore: ObservableObject {
         progress = nextProgress
         ProgressPersistence.save(nextProgress)
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    private func scheduleDailyReminderIfNeeded() async {
+        guard progress.settings.notificationsEnabled else { return }
+
+        let center = UNUserNotificationCenter.current()
+        do {
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            guard granted else { return }
+
+            center.removePendingNotificationRequests(withIdentifiers: [dailyReminderIdentifier])
+
+            let content = UNMutableNotificationContent()
+            content.title = "NeatHabit"
+            content.body = "Time for today's interview reps. Open your plan and keep the streak moving."
+            content.sound = .default
+
+            var components = DateComponents()
+            components.hour = progress.settings.reminderHour
+            components.minute = progress.settings.reminderMinute
+
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            let request = UNNotificationRequest(
+                identifier: dailyReminderIdentifier,
+                content: content,
+                trigger: trigger
+            )
+            try await center.add(request)
+        } catch {
+            // Notification permission can be denied; the plan should still start.
+        }
     }
 }
