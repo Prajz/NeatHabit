@@ -42,6 +42,42 @@ final class StudyProgressStore: ObservableObject {
         commit(nextProgress)
     }
 
+    func toggleSystemDesignCheck(_ checkID: String, day: Int, allCheckIDs: [String]) {
+        var nextProgress = progress
+        var daily = nextProgress.dailyProgress(for: day)
+
+        if daily.systemDesignChecks.contains(checkID) {
+            daily.systemDesignChecks.remove(checkID)
+        } else {
+            daily.systemDesignChecks.insert(checkID)
+        }
+
+        if Set(allCheckIDs).isSubset(of: daily.systemDesignChecks) {
+            daily.completedHabits.insert(.systemDesign)
+        } else {
+            daily.completedHabits.remove(.systemDesign)
+        }
+
+        nextProgress.dayProgress[max(day, 1)] = daily
+        commit(nextProgress)
+    }
+
+    func setSystemDesignChecksCompleted(_ completed: Bool, day: Int, allCheckIDs: [String]) {
+        var nextProgress = progress
+        var daily = nextProgress.dailyProgress(for: day)
+
+        if completed {
+            daily.systemDesignChecks.formUnion(allCheckIDs)
+            daily.completedHabits.insert(.systemDesign)
+        } else {
+            daily.systemDesignChecks.subtract(allCheckIDs)
+            daily.completedHabits.remove(.systemDesign)
+        }
+
+        nextProgress.dayProgress[max(day, 1)] = daily
+        commit(nextProgress)
+    }
+
     func setStatus(_ status: ProblemStatus, for problem: String, day: Int) {
         var nextProgress = progress
         var daily = nextProgress.dailyProgress(for: day)
@@ -68,7 +104,7 @@ final class StudyProgressStore: ObservableObject {
         var nextProgress = progress
         var daily = nextProgress.dailyProgress(for: day)
         daily.problemStatuses[problem] = .red
-        daily.redoDates[problem] = Calendar.current.startOfDay(for: date)
+        daily.redoDates[problem] = min(Calendar.current.startOfDay(for: date), redoGraceEndDate())
 
         nextProgress.dayProgress[max(day, 1)] = daily
         commit(nextProgress)
@@ -80,7 +116,14 @@ final class StudyProgressStore: ObservableObject {
         let sourceDate = calendar.startOfDay(for: planDay.date ?? Date())
         let fromPlan = calendar.date(byAdding: .day, value: 3, to: sourceDate) ?? sourceDate
         let fromToday = calendar.date(byAdding: .day, value: 3, to: calendar.startOfDay(for: Date())) ?? Date()
-        return calendar.startOfDay(for: max(fromPlan, fromToday))
+        return min(calendar.startOfDay(for: max(fromPlan, fromToday)), redoGraceEndDate())
+    }
+
+    func redoGraceEndDate() -> Date {
+        let calendar = Calendar.current
+        let lastPlanDate = schedule.days.last?.date ?? progress.settings.targetFinishDate
+        let graceDate = calendar.date(byAdding: .day, value: 1, to: lastPlanDate) ?? lastPlanDate
+        return calendar.startOfDay(for: graceDate)
     }
 
     func updateNote(_ note: String, day: Int) {

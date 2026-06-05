@@ -2,17 +2,20 @@ import Foundation
 
 struct DailyProgress: Codable, Equatable {
     var completedHabits: Set<StudyHabit>
+    var systemDesignChecks: Set<String>
     var problemStatuses: [String: ProblemStatus]
     var redoDates: [String: Date]
     var note: String
 
     init(
         completedHabits: Set<StudyHabit> = [],
+        systemDesignChecks: Set<String> = [],
         problemStatuses: [String: ProblemStatus] = [:],
         redoDates: [String: Date] = [:],
         note: String = ""
     ) {
         self.completedHabits = completedHabits
+        self.systemDesignChecks = systemDesignChecks
         self.problemStatuses = problemStatuses
         self.redoDates = redoDates
         self.note = note
@@ -49,6 +52,7 @@ struct DailyProgress: Codable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case completedHabits
+        case systemDesignChecks
         case problemStatuses
         case redoDates
         case redoLaterProblems
@@ -58,6 +62,7 @@ struct DailyProgress: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         completedHabits = try container.decodeIfPresent(Set<StudyHabit>.self, forKey: .completedHabits) ?? []
+        systemDesignChecks = try container.decodeIfPresent(Set<String>.self, forKey: .systemDesignChecks) ?? []
         problemStatuses = try container.decodeIfPresent([String: ProblemStatus].self, forKey: .problemStatuses) ?? [:]
         redoDates = try container.decodeIfPresent([String: Date].self, forKey: .redoDates) ?? [:]
 
@@ -78,6 +83,7 @@ struct DailyProgress: Codable, Equatable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(completedHabits, forKey: .completedHabits)
+        try container.encode(systemDesignChecks, forKey: .systemDesignChecks)
         try container.encode(problemStatuses, forKey: .problemStatuses)
         try container.encode(redoDates, forKey: .redoDates)
         try container.encode(note, forKey: .note)
@@ -112,6 +118,15 @@ struct StoredProgress: Codable, Equatable {
 
     func dailyProgress(for day: Int) -> DailyProgress {
         dayProgress[max(day, 1)] ?? DailyProgress()
+    }
+
+    func hasRecordedWork(for day: Int) -> Bool {
+        let daily = dailyProgress(for: day)
+        return !daily.completedHabits.isEmpty
+            || !daily.systemDesignChecks.isEmpty
+            || daily.problemStatuses.contains { $0.value != .untouched }
+            || !daily.redoDates.isEmpty
+            || !daily.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var touchedProblemTitles: Set<String> {

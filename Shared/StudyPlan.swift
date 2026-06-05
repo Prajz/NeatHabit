@@ -298,30 +298,30 @@ enum StudyPlanner {
         let currentDay = progress.currentDayNumber(in: baseSchedule)
         let completedProblemTitles = progress.touchedProblemTitles
         var lockedProblemTitles = Set<String>()
-        var adaptedDays: [StudyDay] = []
+        var lockedDayNumbers = Set<Int>()
+        var adaptedDaysByNumber: [Int: StudyDay] = [:]
 
-        for day in baseSchedule.days where day.day <= currentDay {
+        for day in baseSchedule.days where day.day <= currentDay || progress.hasRecordedWork(for: day.day) {
             let recordedProblems = progress.dailyProgress(for: day.day).problemStatuses.compactMap { problem, status in
                 status == .untouched ? nil : problem
             }
             let problems = orderedUnique(day.problems + recordedProblems)
             lockedProblemTitles.formUnion(problems)
-            adaptedDays.append(
-                StudyDay(
-                    day: day.day,
-                    topic: day.topic,
-                    problems: problems,
-                    systemDesignFocus: day.systemDesignFocus,
-                    date: day.date,
-                    sections: day.sections
-                )
+            lockedDayNumbers.insert(day.day)
+            adaptedDaysByNumber[day.day] = StudyDay(
+                day: day.day,
+                topic: day.topic,
+                problems: problems,
+                systemDesignFocus: day.systemDesignFocus,
+                date: day.date,
+                sections: day.sections
             )
         }
 
         let remainingProblems = (requiredProblems + progress.settings.extraProblems.map { ProblemRef(title: $0.title, sectionTitle: $0.sectionTitle) }).filter { problem in
             !completedProblemTitles.contains(problem.title) && !lockedProblemTitles.contains(problem.title)
         }
-        let futureDays = baseSchedule.days.filter { $0.day > currentDay }
+        let futureDays = baseSchedule.days.filter { !lockedDayNumbers.contains($0.day) }
         let counts = balancedCounts(total: remainingProblems.count, buckets: futureDays.count)
         var problemIndex = 0
 
@@ -330,20 +330,18 @@ enum StudyPlanner {
             let slice = Array(remainingProblems[problemIndex..<problemIndex + count])
             problemIndex += count
 
-            adaptedDays.append(
-                StudyDay(
-                    day: day.day,
-                    topic: topic(for: slice),
-                    problems: slice.map(\.title),
-                    systemDesignFocus: day.systemDesignFocus,
-                    date: day.date,
-                    sections: orderedUnique(slice.map(\.sectionTitle))
-                )
+            adaptedDaysByNumber[day.day] = StudyDay(
+                day: day.day,
+                topic: topic(for: slice),
+                problems: slice.map(\.title),
+                systemDesignFocus: day.systemDesignFocus,
+                date: day.date,
+                sections: orderedUnique(slice.map(\.sectionTitle))
             )
         }
 
         return StudySchedule(
-            days: adaptedDays,
+            days: baseSchedule.days.compactMap { adaptedDaysByNumber[$0.day] },
             settings: progress.settings,
             startDate: baseSchedule.startDate,
             requiredProblemCount: requiredProblemCount
