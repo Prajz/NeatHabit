@@ -55,8 +55,6 @@ struct ContentView: View {
             .tag(AppTab.guide)
         }
         .tint(Theme.accent)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
         .onAppear {
             guard !selectedInitialDay else { return }
             selectedDay = store.progress.currentDayNumber(in: store.schedule)
@@ -189,9 +187,8 @@ private struct OnboardingView: View {
     }
     private var problemMinutesText: String {
         guard schedule.averageProblemsPerDay > 0 else { return "Enough time for today's plan." }
-        return perQuestionMinutes < 15
-            ? "Raise daily time or move the finish date. This gives about \(Int(perQuestionMinutes.rounded())) min per question."
-            : "About \(Int(perQuestionMinutes.rounded())) min per question after the 20-minute design block."
+        let minutes = Int(perQuestionMinutes.rounded())
+        return "\(settings.dailyMinutes)m/day - 20m design = \(settings.problemBlockMinutes)m for questions. About \(minutes)m/question."
     }
 
     private var canStart: Bool {
@@ -224,20 +221,20 @@ private struct OnboardingView: View {
 
                 TabView(selection: $page) {
                     OnboardingPageCard(
-                        eyebrow: "ShipSwift setup",
+                        eyebrow: "Setup",
                         symbol: "sparkles.rectangle.stack.fill",
-                        title: "Turn the 150 into a daily interview loop.",
-                        subtitle: "Set the plan once. NeatHabit keeps today focused on the next useful decision."
+                        title: "Build your daily plan.",
+                        subtitle: "NeetCode 150 plus one design rep each day."
                     ) {
                         VStack(spacing: 12) {
                             HStack(spacing: 10) {
                                 MetricTile(title: "Question bank", value: "\(schedule.requiredProblemCount)", symbol: "checklist", tint: Theme.accent)
-                                MetricTile(title: "Today starts", value: "D\(store.progress.currentDayNumber(in: schedule))", symbol: "target", tint: Theme.glassBlue)
+                                MetricTile(title: "Today starts", value: "Day \(store.progress.currentDayNumber(in: schedule))", symbol: "target", tint: Theme.glassBlue)
                             }
 
-                            OnboardingStepRow(number: "01", title: "Finish date sets load", bodyText: "Move the target date and the app redistributes problems across more or fewer days.")
-                            OnboardingStepRow(number: "02", title: "Daily time sets quality", bodyText: "20 minutes stay reserved for system design. The rest becomes question time.")
-                            OnboardingStepRow(number: "03", title: "Reminder keeps the loop alive", bodyText: "Notification time only changes the prompt, not the plan math.")
+                            OnboardingStepRow(number: "01", title: "Pick a finish date", bodyText: "This sets how many questions you do per day.")
+                            OnboardingStepRow(number: "02", title: "Pick daily time", bodyText: "20 minutes is kept for design practice. The rest is question time.")
+                            OnboardingStepRow(number: "03", title: "Pick a reminder", bodyText: "Just a daily nudge. It does not change the plan.")
                         }
                     }
                     .tag(0)
@@ -245,14 +242,14 @@ private struct OnboardingView: View {
                     OnboardingPageCard(
                         eyebrow: "Finish",
                         symbol: "calendar.badge.clock",
-                        title: "Move the date and watch the workload breathe.",
-                        subtitle: "More days lowers problems/day and raises minutes/question. Fewer days does the opposite."
+                        title: "Pick a finish date.",
+                        subtitle: "This changes how many questions land on each day."
                     ) {
                         VStack(spacing: 14) {
                             PurposeRow(
                                 symbol: "arrow.left.and.right",
-                                title: "Changing date changes pace",
-                                bodyText: "Plan days, problems/day, and minutes/question update together."
+                                title: "Date changes daily load",
+                                bodyText: "More days means fewer questions/day. Fewer days means more."
                             )
 
                             DatePicker(
@@ -268,9 +265,8 @@ private struct OnboardingView: View {
                             .padding(12)
                             .glassControlBackground(tint: Theme.accent)
 
-                            PlanImpactCard(
-                                title: "Live target impact",
-                                note: "This is why the question time changes when the date changes.",
+                            TargetImpactCard(
+                                title: "Date impact",
                                 schedule: schedule
                             )
                         }
@@ -280,14 +276,14 @@ private struct OnboardingView: View {
                     OnboardingPageCard(
                         eyebrow: "Time",
                         symbol: "timer",
-                        title: "How much time can you actually give daily?",
+                        title: "How much time can you give daily?",
                         subtitle: problemMinutesText
                     ) {
                         VStack(spacing: 14) {
                             PurposeRow(
                                 symbol: "divide.square.fill",
-                                title: "Changing time changes question depth",
-                                bodyText: "Daily budget minus 20 minutes of design becomes the problem block."
+                                title: "Why minutes/question changes",
+                                bodyText: "Daily time minus 20m design practice is split across your questions."
                             )
 
                             VStack(alignment: .leading, spacing: 12) {
@@ -316,7 +312,7 @@ private struct OnboardingView: View {
                                 HStack {
                                     Text("80m")
                                     Spacer()
-                                    Text("600m")
+                                    Text("Max 600m/day")
                                 }
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(Theme.muted)
@@ -326,9 +322,8 @@ private struct OnboardingView: View {
 
                             TimeBudgetBreakdown(schedule: schedule)
 
-                            PlanImpactCard(
-                                title: "Live time impact",
-                                note: "Aim for at least 15 minutes per question so speed does not replace learning.",
+                            TimeImpactCard(
+                                title: "Time impact",
                                 schedule: schedule
                             )
                         }
@@ -338,8 +333,8 @@ private struct OnboardingView: View {
                     OnboardingPageCard(
                         eyebrow: "Reminder",
                         symbol: "bell.badge.fill",
-                        title: "Pick the moment you will not negotiate with.",
-                        subtitle: "This only controls the notification. Your plan math stays unchanged."
+                        title: "Set a reminder.",
+                        subtitle: "Pick a time for the daily nudge."
                     ) {
                         VStack(spacing: 14) {
                             DatePicker(
@@ -369,12 +364,6 @@ private struct OnboardingView: View {
                             .glassControlBackground(tint: settings.notificationsEnabled ? Theme.accent : Theme.glassBlue)
 
                             ReminderPreviewCard(settings: settings)
-
-                            PurposeRow(
-                                symbol: "info.circle.fill",
-                                title: "What changes here",
-                                bodyText: "Only the notification preview changes. Problems/day and minutes/question stay exactly the same."
-                            )
                         }
                     }
                     .tag(3)
@@ -383,8 +372,8 @@ private struct OnboardingView: View {
                         eyebrow: "Ready",
                         symbol: canStart ? "checkmark.seal.fill" : "exclamationmark.triangle.fill",
                         tint: canStart ? Theme.accent : Theme.red,
-                        title: canStart ? "Your daily loop is ready." : "Give each question more room.",
-                        subtitle: "System design stays daily. Red questions return automatically on redo dates."
+                        title: canStart ? "Ready." : "Needs more time.",
+                        subtitle: "You can change this later from Guide."
                     ) {
                         VStack(spacing: 14) {
                             HStack(spacing: 10) {
@@ -392,9 +381,13 @@ private struct OnboardingView: View {
                                 MetricTile(title: "Question time", value: "\(Int(perQuestionMinutes.rounded()))m", symbol: "timer", tint: canStart ? Theme.glassBlue : Theme.red)
                             }
 
-                            PlanImpactCard(
-                                title: "Final plan shape",
-                                note: "This is the schedule NeatHabit will generate when you start.",
+                            TargetImpactCard(
+                                title: "Date impact",
+                                schedule: schedule
+                            )
+
+                            TimeImpactCard(
+                                title: "Time impact",
                                 schedule: schedule
                             )
 
@@ -481,24 +474,15 @@ private struct OnboardingView: View {
     }
 
     private func updateTargetDate(_ date: Date) {
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            store.updateTargetFinishDate(date)
-        }
-        Haptics.selection()
+        store.updateTargetFinishDate(date)
     }
 
     private func updateDailyMinutes(_ minutes: Int) {
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            store.updateDailyMinutes(minutes)
-        }
-        Haptics.selection()
+        store.updateDailyMinutes(minutes)
     }
 
     private func updateReminderTime(_ date: Date) {
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            store.updateReminderTime(date)
-        }
-        Haptics.selection()
+        store.updateReminderTime(date)
     }
 
     private func updateNotificationsEnabled(_ enabled: Bool) {
@@ -538,14 +522,13 @@ private struct OnboardingPageCard<Content: View>: View {
             VStack(spacing: 22) {
                 Spacer(minLength: 12)
 
-                LiquidGlassCard(tint: tint, shimmer: true) {
+                LiquidGlassCard(tint: tint) {
                     VStack(alignment: .center, spacing: 18) {
-                        SWGlowSweep(baseColor: tint.opacity(0.82), glowColor: .white.opacity(0.95), duration: 2.8) {
-                            Image(systemName: symbol)
-                                .font(AppFont.display(size: 54, weight: .black))
-                                .frame(width: 86, height: 86)
-                        }
-                        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                        Image(systemName: symbol)
+                            .font(AppFont.display(size: 54, weight: .black))
+                            .foregroundStyle(tint)
+                            .frame(width: 86, height: 86)
+                            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
 
                         Text(eyebrow)
                             .eyebrow(color: tint)
@@ -605,9 +588,41 @@ private struct PurposeRow: View {
     }
 }
 
-private struct PlanImpactCard: View {
+private struct TargetImpactCard: View {
     let title: String
-    let note: String
+    let schedule: StudySchedule
+
+    private var isComfortable: Bool {
+        schedule.averageProblemsPerDay <= 3
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.headline.weight(.black))
+                    .foregroundStyle(Theme.ink)
+                Spacer(minLength: 8)
+                Text(isComfortable ? "Balanced" : "Tight")
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(isComfortable ? Theme.green : Theme.red)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background((isComfortable ? Theme.green : Theme.red).opacity(0.12), in: Capsule())
+            }
+
+            HStack(spacing: 10) {
+                AnimatedMetricTile(title: "Plan days", value: "\(schedule.totalDays)", symbol: "calendar", tint: Theme.accent)
+                AnimatedMetricTile(title: "Problems/day", value: String(format: "%.1f", schedule.averageProblemsPerDay), symbol: "keyboard.fill", tint: Theme.accent)
+            }
+        }
+        .padding(14)
+        .glassControlBackground(tint: isComfortable ? Theme.accent : Theme.red)
+    }
+}
+
+private struct TimeImpactCard: View {
+    let title: String
     let schedule: StudySchedule
 
     private var perQuestionMinutes: Int {
@@ -626,7 +641,7 @@ private struct PlanImpactCard: View {
                     .font(.headline.weight(.black))
                     .foregroundStyle(Theme.ink)
                 Spacer(minLength: 8)
-                Text(isComfortable ? "Balanced" : "Tight")
+                Text(isComfortable ? "Enough" : "Tight")
                     .font(.caption.weight(.black))
                     .foregroundStyle(isComfortable ? Theme.green : Theme.red)
                     .padding(.horizontal, 9)
@@ -634,22 +649,13 @@ private struct PlanImpactCard: View {
                     .background((isComfortable ? Theme.green : Theme.red).opacity(0.12), in: Capsule())
             }
 
-            Text(note)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                AnimatedMetricTile(title: "Plan days", value: "\(schedule.totalDays)", symbol: "calendar", tint: Theme.accent)
-                AnimatedMetricTile(title: "Problems/day", value: String(format: "%.1f", schedule.averageProblemsPerDay), symbol: "keyboard.fill", tint: Theme.accent)
-                AnimatedMetricTile(title: "Problem block", value: "\(schedule.settings.problemBlockMinutes)m", symbol: "hourglass", tint: Theme.glassBlue)
+            HStack(spacing: 10) {
+                AnimatedMetricTile(title: "Problem time", value: "\(schedule.settings.problemBlockMinutes)m", symbol: "hourglass", tint: Theme.glassBlue)
                 AnimatedMetricTile(title: "Per question", value: "\(perQuestionMinutes)m", symbol: "timer", tint: isComfortable ? Theme.green : Theme.red)
             }
         }
         .padding(14)
         .glassControlBackground(tint: isComfortable ? Theme.accent : Theme.red)
-        .animation(.spring(response: 0.34, dampingFraction: 0.84), value: schedule.totalDays)
-        .animation(.spring(response: 0.34, dampingFraction: 0.84), value: schedule.settings.dailyMinutes)
     }
 }
 
@@ -691,7 +697,7 @@ private struct TimeBudgetBreakdown: View {
             .frame(height: 11)
 
             HStack(spacing: 10) {
-                BudgetLegendDot(title: "Design", value: "\(schedule.settings.fixedMinutes)m", color: Theme.ink)
+                BudgetLegendDot(title: "Design rep", value: "\(schedule.settings.fixedMinutes)m", color: Theme.ink)
                 BudgetLegendDot(title: "Questions", value: "\(schedule.settings.problemBlockMinutes)m", color: Theme.accent)
             }
         }
@@ -737,10 +743,10 @@ private struct ReminderPreviewCard: View {
             .frame(width: 48, height: 48)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(settings.notificationsEnabled ? "Reminder armed" : "Reminder off")
+                Text(settings.notificationsEnabled ? "Reminder on" : "Reminder off")
                     .font(.headline.weight(.black))
                     .foregroundStyle(Theme.ink)
-                Text(settings.notificationsEnabled ? "NeatHabit will ask iOS to notify you at \(settings.reminderDate.formatted(.dateTime.hour().minute()))." : "The plan still works; you just will not get the daily nudge.")
+                Text(settings.notificationsEnabled ? "Daily nudge at \(settings.reminderDate.formatted(.dateTime.hour().minute()))." : "No daily nudge.")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -750,9 +756,6 @@ private struct ReminderPreviewCard: View {
         }
         .padding(14)
         .glassControlBackground(tint: settings.notificationsEnabled ? Theme.accent : Theme.glassBlue)
-        .animation(.spring(response: 0.32, dampingFraction: 0.84), value: settings.notificationsEnabled)
-        .animation(.spring(response: 0.32, dampingFraction: 0.84), value: settings.reminderHour)
-        .animation(.spring(response: 0.32, dampingFraction: 0.84), value: settings.reminderMinute)
     }
 }
 
@@ -784,8 +787,6 @@ private struct AnimatedMetricTile: View {
     var body: some View {
         MetricTile(title: title, value: value, symbol: symbol, tint: tint)
             .contentTransition(.numericText())
-            .id("\(title)-\(value)")
-            .transition(.asymmetric(insertion: .scale(scale: 0.92).combined(with: .opacity), removal: .opacity))
     }
 }
 
@@ -843,8 +844,6 @@ private struct StudyScreen<Content: View>: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
     }
 }
 
@@ -949,7 +948,7 @@ private struct DaySelector: View {
                                 .font(.caption2.weight(.black))
                                 .lineLimit(1)
 
-                            Text("D\(day.day)")
+                            Text("Day \(day.day)")
                                 .font(.caption.weight(.black))
                                 .monospacedDigit()
 
@@ -958,7 +957,7 @@ private struct DaySelector: View {
                                 .frame(width: isToday ? 8 : 6, height: isToday ? 8 : 6)
                         }
                         .foregroundStyle(isSelected ? Theme.ink : Theme.muted)
-                        .frame(width: 62, height: 62)
+                        .frame(width: 72, height: 62)
                         .background((isSelected ? Theme.accent.opacity(0.16) : Theme.surface), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -1640,7 +1639,7 @@ private struct RedoQueueCard: View {
                                         Text(candidate.problem)
                                             .font(.subheadline.weight(.bold))
                                             .foregroundStyle(Theme.ink)
-                                        Text("Due \(shortDateText(candidate.dueDate)) - D\(candidate.day) - \(candidate.topic)")
+                                        Text("Due \(shortDateText(candidate.dueDate)) - Day \(candidate.day) - \(candidate.topic)")
                                             .font(.caption.weight(.medium))
                                             .foregroundStyle(Theme.muted)
                                     }
@@ -2049,7 +2048,7 @@ private struct UpcomingCard: View {
                             HStack(spacing: 12) {
                                 VStack(spacing: 1) {
                                     Text(day.date.map(shortDateText) ?? "Day")
-                                    Text("D\(day.day)")
+                                    Text("Day \(day.day)")
                                 }
                                     .font(.caption2.weight(.black))
                                     .monospacedDigit()
@@ -2320,7 +2319,6 @@ private struct MetricTile: View {
             Image(systemName: symbol)
                 .font(.headline.weight(.black))
                 .foregroundStyle(tint)
-                .symbolEffect(.pulse, value: value)
             Text(value)
                 .font(.title3.weight(.black))
                 .monospacedDigit()
@@ -2379,38 +2377,25 @@ private struct SectionHeader: View {
 
 private struct LiquidGlassCard<Content: View>: View {
     let tint: Color
-    let shimmer: Bool
     let content: Content
 
-    init(tint: Color = Theme.accent, shimmer: Bool = false, @ViewBuilder content: () -> Content) {
+    init(tint: Color = Theme.accent, @ViewBuilder content: () -> Content) {
         self.tint = tint
-        self.shimmer = shimmer
         self.content = content()
     }
 
     var body: some View {
-        if shimmer {
-            SWShimmer(duration: 3.2, delay: 2.4) {
-                glassBody
-            }
-        } else {
-            glassBody
-        }
-    }
-
-    private var glassBody: some View {
         content
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(Theme.cardFill.opacity(0.72))
+                    .fill(Theme.cardFill.opacity(0.92))
                     .overlay {
                         LinearGradient(
                             colors: [
-                                .white.opacity(0.28),
-                                tint.opacity(0.10),
+                                .white.opacity(0.18),
+                                tint.opacity(0.08),
                                 .clear
                             ],
                             startPoint: .topLeading,
@@ -2421,35 +2406,26 @@ private struct LiquidGlassCard<Content: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
             .overlay(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .strokeBorder(.white.opacity(0.34), lineWidth: 0.7)
-                    .blendMode(.plusLighter)
+                    .strokeBorder(.white.opacity(0.24), lineWidth: 0.7)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .strokeBorder(tint.opacity(0.20), lineWidth: 1)
             }
-            .shadow(color: tint.opacity(0.14), radius: 22, x: 0, y: 12)
-            .shadow(color: Theme.cardShadow.opacity(0.18), radius: 30, x: 0, y: 20)
+            .shadow(color: Theme.cardShadow.opacity(0.13), radius: 22, x: 0, y: 14)
     }
 }
 
 private struct AppBackground: View {
     var body: some View {
         ZStack {
-            SWAnimatedMeshGradient(
-                paletteA: Theme.meshPaletteA,
-                paletteB: Theme.meshPaletteB,
-                duration: 8
-            )
-            .opacity(0.42)
-
-            Theme.canvas.opacity(0.82)
+            Theme.canvas
 
             LinearGradient(
                 colors: [
-                    .white.opacity(0.45),
+                    .white.opacity(0.26),
                     .clear,
-                    Theme.accent.opacity(0.08)
+                    Theme.accent.opacity(0.06)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -2463,115 +2439,6 @@ private struct AppBackground: View {
             )
         }
         .ignoresSafeArea()
-    }
-}
-
-private struct SWAnimatedMeshGradient: View {
-    var paletteA: [Color]
-    var paletteB: [Color]
-    var duration: Double = 5.0
-
-    @State private var appear = false
-
-    var body: some View {
-        MeshGradient(
-            width: 3,
-            height: 3,
-            points: [
-                .init(0, 0), .init(0.5, 0), .init(1, 0),
-                .init(0, 0.5), .init(0.5, 0.5), .init(1, 0.5),
-                .init(0, 1), .init(0.5, 1), .init(1, 1)
-            ],
-            colors: appear ? paletteA : paletteB
-        )
-        .onAppear {
-            withAnimation(.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
-                appear = true
-            }
-        }
-    }
-}
-
-private struct SWShimmer<Content: View>: View {
-    @State private var animate = false
-
-    var duration: Double = 2.0
-    var delay: Double = 1.0
-    let content: Content
-
-    init(duration: Double = 2.0, delay: Double = 1.0, @ViewBuilder content: () -> Content) {
-        self.duration = duration
-        self.delay = delay
-        self.content = content()
-    }
-
-    var body: some View {
-        content
-            .overlay {
-                GeometryReader { geometry in
-                    let bandWidth = geometry.size.width * 0.52
-
-                    LinearGradient(
-                        colors: [.clear, .clear, .white.opacity(0.22), .clear, .clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .frame(width: bandWidth)
-                    .offset(x: animate ? geometry.size.width + bandWidth : -bandWidth * 1.5)
-                    .animation(.linear(duration: duration).delay(delay).repeatForever(autoreverses: false), value: animate)
-                }
-                .allowsHitTesting(false)
-                .clipped()
-            }
-            .task {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                animate = true
-            }
-    }
-}
-
-private struct SWGlowSweep<Content: View>: View {
-    @State private var animate = false
-
-    var baseColor: Color = .gray
-    var glowColor: Color = .white
-    var duration: Double = 2.0
-    var bandWidth: CGFloat = 150
-    let content: Content
-
-    init(
-        baseColor: Color = .gray,
-        glowColor: Color = .white,
-        duration: Double = 2.0,
-        bandWidth: CGFloat = 150,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.baseColor = baseColor
-        self.glowColor = glowColor
-        self.duration = duration
-        self.bandWidth = bandWidth
-        self.content = content()
-    }
-
-    var body: some View {
-        content
-            .hidden()
-            .overlay {
-                GeometryReader { geometry in
-                    Rectangle()
-                        .fill(baseColor)
-                        .overlay {
-                            LinearGradient(colors: [.clear, glowColor, .clear], startPoint: .leading, endPoint: .trailing)
-                                .frame(width: bandWidth)
-                                .offset(x: animate ? geometry.size.width / 2 + bandWidth : -geometry.size.width / 2 - bandWidth)
-                        }
-                        .animation(.linear(duration: duration).repeatForever(autoreverses: false), value: animate)
-                        .mask { content }
-                }
-            }
-            .onAppear {
-                animate = true
-            }
     }
 }
 
@@ -2606,10 +2473,12 @@ private struct SWPrimaryGlassButtonStyle: ButtonStyle {
 }
 
 private enum Haptics {
+    @MainActor
     static func selection() {
         UISelectionFeedbackGenerator().selectionChanged()
     }
 
+    @MainActor
     static func success() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
@@ -2653,16 +2522,6 @@ private enum Theme {
     static let green = Color(red: 0.20, green: 0.58, blue: 0.34)
     static let amber = Color(red: 0.78, green: 0.49, blue: 0.16)
     static let red = Color(red: 0.72, green: 0.25, blue: 0.24)
-    static let meshPaletteA: [Color] = [
-        Color(red: 0.86, green: 0.91, blue: 1.00), accent.opacity(0.30), Color(red: 0.78, green: 0.86, blue: 1.00),
-        Color(red: 0.97, green: 0.98, blue: 1.00), Color(red: 0.80, green: 0.88, blue: 1.00), glassBlue.opacity(0.25),
-        Color(red: 0.88, green: 0.94, blue: 1.00), Color(red: 0.96, green: 0.98, blue: 1.00), accent.opacity(0.20)
-    ]
-    static let meshPaletteB: [Color] = [
-        Color(red: 0.98, green: 0.99, blue: 1.00), Color(red: 0.82, green: 0.89, blue: 1.00), glassBlue.opacity(0.32),
-        accent.opacity(0.24), Color(red: 0.95, green: 0.97, blue: 1.00), Color(red: 0.80, green: 0.88, blue: 1.00),
-        Color(red: 0.90, green: 0.94, blue: 1.00), accent.opacity(0.18), Color(red: 0.97, green: 0.98, blue: 1.00)
-    ]
 
     private static func dynamic(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
         Color(uiColor: UIColor { traits in
@@ -2687,8 +2546,8 @@ private extension View {
         self
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(tint.opacity(0.08))
+                    .fill(Theme.surface)
+                    .overlay(tint.opacity(0.07))
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
