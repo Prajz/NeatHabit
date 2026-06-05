@@ -365,22 +365,11 @@ private struct DailyFlowCard: View {
                             .eyebrow()
 
                         if let topic {
-                            NavigationLink {
-                                SystemDesignDetailView(topic: topic)
-                            } label: {
-                                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                    Text(topic.title)
-                                        .font(AppFont.display(size: 24, weight: .black))
-                                        .tracking(-0.6)
-                                        .foregroundStyle(Theme.ink)
-                                        .fixedSize(horizontal: false, vertical: true)
-
-                                    Image(systemName: "arrow.up.forward.circle.fill")
-                                        .font(.title3.weight(.bold))
-                                        .foregroundStyle(Theme.accent)
-                                }
-                            }
-                            .buttonStyle(.plain)
+                            Text(topic.title)
+                                .font(AppFont.display(size: 24, weight: .black))
+                                .tracking(-0.6)
+                                .foregroundStyle(Theme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
 
                             Text(topic.category)
                                 .font(.subheadline.weight(.bold))
@@ -404,17 +393,6 @@ private struct DailyFlowCard: View {
                             .font(.title.weight(.black))
                             .foregroundStyle(Theme.accent)
                     }
-                }
-
-                if let topic, !topic.overview.isEmpty {
-                    Text(topic.overview)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.muted)
-                        .lineSpacing(2)
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(12)
-                        .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
 
                 HStack(spacing: 12) {

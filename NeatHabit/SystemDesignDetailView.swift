@@ -1,8 +1,10 @@
 import SwiftUI
+import UIKit
 
 struct SystemDesignDetailView: View {
     let topic: SystemDesignTopic
     @State private var appeared = false
+    @State private var showCopiedAlert = false
 
     var body: some View {
         ZStack {
@@ -19,6 +21,16 @@ struct SystemDesignDetailView: View {
                     TalkingPointsSection(points: topic.talkingPoints)
 
                     TradeoffsSection(tradeoffs: topic.tradeoffs)
+
+                    Button {
+                        copyTopicForLLM(topic)
+                        showCopiedAlert = true
+                    } label: {
+                        Label("Ask AI", systemImage: "brain.head.profile")
+                            .font(.subheadline.weight(.black))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SWSecondaryGlassButtonStyle(tint: Theme.glassBlue))
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 12)
@@ -32,6 +44,53 @@ struct SystemDesignDetailView: View {
                 appeared = true
             }
         }
+        .alert("Copied to clipboard", isPresented: $showCopiedAlert) {
+            Button("Got it") {}
+        } message: {
+            Text("Paste into any LLM and ask follow-up questions. You think I'm paying for API costs? lol")
+        }
+    }
+
+    private func copyTopicForLLM(_ topic: SystemDesignTopic) {
+        var parts: [String] = []
+
+        parts.append("System Design: \(topic.title)")
+        parts.append("Category: \(topic.category)")
+
+        if !topic.overview.isEmpty {
+            parts.append("")
+            parts.append("Overview:")
+            parts.append(topic.overview)
+        }
+
+        if !topic.concepts.isEmpty {
+            parts.append("")
+            parts.append("Key Concepts:")
+            for concept in topic.concepts {
+                parts.append("- \(concept.title): \(concept.detail)")
+            }
+        }
+
+        if !topic.talkingPoints.isEmpty {
+            parts.append("")
+            parts.append("Talking Points:")
+            for point in topic.talkingPoints {
+                parts.append("- \(point)")
+            }
+        }
+
+        if !topic.tradeoffs.isEmpty {
+            parts.append("")
+            parts.append("Tradeoffs:")
+            for tradeoff in topic.tradeoffs {
+                parts.append("- \(tradeoff)")
+            }
+        }
+
+        parts.append("")
+        parts.append("Explain this to me simply.")
+
+        UIPasteboard.general.string = parts.joined(separator: "\n")
     }
 }
 
