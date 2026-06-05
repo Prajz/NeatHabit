@@ -10,6 +10,8 @@
 		200000000000000000000001 /* NeatHabitApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000001 /* NeatHabitApp.swift */; };
 		200000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000002 /* ContentView.swift */; };
 		200000000000000000000003 /* StudyProgressStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000003 /* StudyProgressStore.swift */; };
+		200000000000000000000012 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000015 /* DesignSystem.swift */; };
+		200000000000000000000013 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000016 /* OnboardingView.swift */; };
 		200000000000000000000004 /* StudyPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000004 /* StudyPlan.swift */; };
 		200000000000000000000005 /* StudyProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000005 /* StudyProgress.swift */; };
 		200000000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000006 /* Assets.xcassets */; };
@@ -48,6 +50,8 @@
 		100000000000000000000001 /* NeatHabitApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeatHabitApp.swift; sourceTree = "<group>"; };
 		100000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		100000000000000000000003 /* StudyProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyProgressStore.swift; sourceTree = "<group>"; };
+		100000000000000000000015 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		100000000000000000000016 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		100000000000000000000004 /* StudyPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyPlan.swift; sourceTree = "<group>"; };
 		100000000000000000000005 /* StudyProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyProgress.swift; sourceTree = "<group>"; };
 		100000000000000000000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -102,6 +106,8 @@
 			isa = PBXGroup;
 			children = (
 				100000000000000000000001 /* NeatHabitApp.swift */,
+				100000000000000000000015 /* DesignSystem.swift */,
+				100000000000000000000016 /* OnboardingView.swift */,
 				100000000000000000000002 /* ContentView.swift */,
 				100000000000000000000003 /* StudyProgressStore.swift */,
 				100000000000000000000006 /* Assets.xcassets */,
@@ -231,6 +237,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				200000000000000000000001 /* NeatHabitApp.swift in Sources */,
+				200000000000000000000012 /* DesignSystem.swift in Sources */,
+				200000000000000000000013 /* OnboardingView.swift in Sources */,
 				200000000000000000000002 /* ContentView.swift in Sources */,
 				200000000000000000000003 /* StudyProgressStore.swift in Sources */,
 				200000000000000000000004 /* StudyPlan.swift in Sources */,
@@ -383,6 +391,7 @@
 		500000000000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = NeatHabit/NeatHabit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -411,6 +420,7 @@
 		500000000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = NeatHabit/NeatHabit.entitlements;
 				CODE_SIGN_STYLE = Automatic;

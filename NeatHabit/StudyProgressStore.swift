@@ -5,6 +5,7 @@ import WidgetKit
 
 private let onboardingStorageKey = "neatHabit.onboarding.v1"
 private let dailyReminderIdentifier = "neatHabit.dailyReminder"
+private let maximumDailyMinutes = 240
 
 @MainActor
 final class StudyProgressStore: ObservableObject {
@@ -15,7 +16,14 @@ final class StudyProgressStore: ObservableObject {
 
     init(progress: StoredProgress = ProgressPersistence.load(), onboardingDefaults: UserDefaults = .standard) {
         self.onboardingDefaults = onboardingDefaults
-        self.progress = progress
+
+        var normalizedProgress = progress
+        normalizedProgress.settings.dailyMinutes = min(max(normalizedProgress.settings.dailyMinutes, 80), maximumDailyMinutes)
+        self.progress = normalizedProgress
+
+        if normalizedProgress != progress {
+            ProgressPersistence.save(normalizedProgress)
+        }
 
         if let storedValue = onboardingDefaults.object(forKey: onboardingStorageKey) as? Bool {
             hasCompletedOnboarding = storedValue
@@ -136,7 +144,7 @@ final class StudyProgressStore: ObservableObject {
 
     func updateDailyMinutes(_ minutes: Int) {
         var nextProgress = progress
-        nextProgress.settings.dailyMinutes = min(max(minutes, 80), 600)
+        nextProgress.settings.dailyMinutes = min(max(minutes, 80), maximumDailyMinutes)
         commit(nextProgress)
     }
 
