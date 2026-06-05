@@ -73,7 +73,7 @@ private struct TodayTab: View {
 
     var body: some View {
         StudyScreen(title: "Today") {
-            VStack(spacing: 18) {
+            VStack(spacing: ScreenScale.scale(18)) {
                 DaySelector(
                     selectedDay: $selectedDay,
                     progress: store.progress,
@@ -112,7 +112,7 @@ private struct RoadmapTab: View {
 
     var body: some View {
         StudyScreen(title: "Roadmap") {
-            VStack(spacing: 18) {
+            VStack(spacing: ScreenScale.scale(18)) {
                 RoadmapIntroCard()
 
                 QuestionBankRoadmapCard(
@@ -138,7 +138,7 @@ private struct ProgressTab: View {
 
     var body: some View {
         StudyScreen(title: "Progress") {
-            VStack(spacing: 18) {
+            VStack(spacing: ScreenScale.scale(18)) {
                 ProgressHeroCard(summary: summary)
 
                 TargetCard(summary: summary)
@@ -163,7 +163,7 @@ private struct GuideTab: View {
 
     var body: some View {
         StudyScreen(title: "Guide") {
-            VStack(spacing: 18) {
+            VStack(spacing: ScreenScale.scale(18)) {
                 GuideHeaderCard()
                 GuideSetupCard(schedule: store.schedule)
                 SystemDesignTopicsCard()
@@ -189,9 +189,9 @@ private struct StudyScreen<Content: View>: View {
 
             ScrollView(showsIndicators: false) {
                 content
-                    .padding(.horizontal, 18)
-                    .padding(.top, 12)
-                    .padding(.bottom, 34)
+                    .padding(.horizontal, ScreenScale.scale(18))
+                    .padding(.top, ScreenScale.scale(12))
+                    .padding(.bottom, ScreenScale.scale(34))
             }
             .scrollDismissesKeyboard(.interactively)
         }
@@ -221,8 +221,8 @@ private struct HeroPanel: View {
 
     var body: some View {
         LiquidGlassCard(tint: Theme.accent) {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: ScreenScale.scale(22)) {
+                HStack(alignment: .top, spacing: ScreenScale.scale(16)) {
                     VStack(alignment: .leading, spacing: 9) {
                         Text(day.day == currentDay ? "Current day" : "Selected day")
                             .eyebrow()
@@ -422,7 +422,7 @@ private struct DailyFlowCard: View {
                             let allIDs = systemDesignChecklist.map(\.id)
                             store.setSystemDesignChecksCompleted(true, day: day.day, allCheckIDs: allIDs)
                         } label: {
-                            Label("I understand", systemImage: "checkmark")
+                            Label("Done?", systemImage: "checkmark")
                                 .font(.subheadline.weight(.black))
                                 .frame(maxWidth: .infinity)
                         }

@@ -1,13 +1,25 @@
 import SwiftUI
 import UIKit
 
+enum ScreenScale {
+    static let baseWidth: CGFloat = 375
+
+    static var factor: CGFloat {
+        max(1.0, UIScreen.main.bounds.width / baseWidth)
+    }
+
+    static func scale(_ value: CGFloat, cap: CGFloat = 1.35) -> CGFloat {
+        value * min(factor, cap)
+    }
+}
+
 enum AppFont {
     static func body(size: CGFloat = 15, weight: Font.Weight = .regular) -> Font {
-        .custom(postScriptName(for: weight), size: size, relativeTo: .body)
+        .custom(postScriptName(for: weight), size: ScreenScale.scale(size), relativeTo: .body)
     }
 
     static func display(size: CGFloat, weight: Font.Weight = .black) -> Font {
-        .custom(postScriptName(for: weight), size: size, relativeTo: .largeTitle)
+        .custom(postScriptName(for: weight), size: ScreenScale.scale(size), relativeTo: .largeTitle)
     }
 
     private static func postScriptName(for weight: Font.Weight) -> String {
@@ -96,7 +108,7 @@ struct LiquidGlassCard<Content: View>: View {
 
     var body: some View {
         content
-            .padding(18)
+            .padding(ScreenScale.scale(18))
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)

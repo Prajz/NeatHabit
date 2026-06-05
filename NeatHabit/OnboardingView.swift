@@ -59,7 +59,7 @@ struct OnboardingView: View {
         ZStack {
             AppBackground()
 
-            VStack(spacing: 8) {
+            VStack(spacing: ScreenScale.scale(8)) {
                 TabView(selection: $page) {
                     OnboardingPageCard(
                         eyebrow: "Setup",
@@ -272,7 +272,7 @@ struct OnboardingView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
                 OnboardingProgressRail(page: page, count: 5)
-                    .padding(.horizontal, 22)
+                    .padding(.horizontal, ScreenScale.scale(22))
 
                 HStack(spacing: 12) {
                     if page > 0 {
@@ -313,8 +313,8 @@ struct OnboardingView: View {
                     .buttonStyle(SWPrimaryGlassButtonStyle(tint: canStart ? Theme.accent : Theme.red))
                     .shimmerSweep(duration: 1.15, delay: 0.8)
                 }
-                .padding(.horizontal, 22)
-                .padding(.bottom, 16)
+                .padding(.horizontal, ScreenScale.scale(22))
+                .padding(.bottom, ScreenScale.scale(16))
             }
         }
         .opacity(appeared ? 1 : 0)
@@ -409,9 +409,9 @@ private struct OnboardingPageCard<Content: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: ScreenScale.scale(6)) {
             LiquidGlassCard(tint: tint) {
-                VStack(alignment: .center, spacing: 6) {
+                VStack(alignment: .center, spacing: ScreenScale.scale(6)) {
                     Image(systemName: symbol)
                         .font(AppFont.display(size: 30, weight: .black))
                         .foregroundStyle(tint)
@@ -439,8 +439,8 @@ private struct OnboardingPageCard<Content: View>: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 14)
-        .padding(.top, 8)
+        .padding(.horizontal, ScreenScale.scale(14))
+        .padding(.top, ScreenScale.scale(8))
     }
 }
 
