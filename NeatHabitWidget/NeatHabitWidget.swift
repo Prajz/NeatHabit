@@ -32,20 +32,21 @@ struct NeatHabitWidgetView: View {
         let day = schedule.day(entry.progress.currentDayNumber(in: schedule))
         let daily = entry.progress.dailyProgress(for: day.day)
         let summary = entry.progress.summary(for: schedule)
+        let activeHabits = entry.progress.activeHabits(for: day.day, in: schedule)
 
         switch family {
         case .systemSmall:
-            SmallHomeWidget(day: day, daily: daily, settings: schedule.settings)
+            SmallHomeWidget(day: day, daily: daily, settings: schedule.settings, activeHabits: activeHabits)
         case .systemMedium:
-            MediumHomeWidget(day: day, daily: daily, summary: summary, settings: schedule.settings)
+            MediumHomeWidget(day: day, daily: daily, summary: summary, settings: schedule.settings, activeHabits: activeHabits)
         case .accessoryCircular:
-            CircularLockWidget(day: day, daily: daily, settings: schedule.settings)
+            CircularLockWidget(day: day, daily: daily, settings: schedule.settings, activeHabits: activeHabits)
         case .accessoryRectangular:
-            RectangularLockWidget(day: day, daily: daily, settings: schedule.settings)
+            RectangularLockWidget(day: day, daily: daily, settings: schedule.settings, activeHabits: activeHabits)
         case .accessoryInline:
-            InlineLockWidget(day: day, daily: daily, settings: schedule.settings)
+            InlineLockWidget(day: day, daily: daily, settings: schedule.settings, activeHabits: activeHabits)
         default:
-            MediumHomeWidget(day: day, daily: daily, summary: summary, settings: schedule.settings)
+            MediumHomeWidget(day: day, daily: daily, summary: summary, settings: schedule.settings, activeHabits: activeHabits)
         }
     }
 }
@@ -54,8 +55,9 @@ struct SmallHomeWidget: View {
     let day: StudyDay
     let daily: DailyProgress
     let settings: StudySettings
+    let activeHabits: [StudyHabit]
 
-    private var fraction: Double { daily.completionFraction(for: day, settings: settings) }
+    private var fraction: Double { daily.completionFraction(for: day, settings: settings, hasRedoDue: activeHabits.contains(.review)) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -86,7 +88,7 @@ struct SmallHomeWidget: View {
             ProgressView(value: fraction)
                 .tint(WidgetTheme.accent)
 
-            HabitDots(daily: daily, bright: true)
+            HabitDots(daily: daily, activeHabits: activeHabits, bright: true)
         }
         .foregroundStyle(.white)
         .containerBackground(for: .widget) {
@@ -100,10 +102,12 @@ struct MediumHomeWidget: View {
     let daily: DailyProgress
     let summary: PlanSummary
     let settings: StudySettings
+    let activeHabits: [StudyHabit]
 
-    private var fraction: Double { daily.completionFraction(for: day, settings: settings) }
+    private var fraction: Double { daily.completionFraction(for: day, settings: settings, hasRedoDue: activeHabits.contains(.review)) }
     private var counts: StatusCounts { daily.counts(for: day) }
-    private var activeHabitCount: Int { StudyHabit.activeCases(includePatternStudy: settings.includePatternStudy).count }
+    private var activeHabitCount: Int { activeHabits.count }
+    private var completedActiveHabitCount: Int { activeHabits.filter { daily.completedHabits.contains($0) }.count }
 
     var body: some View {
         HStack(spacing: 16) {
@@ -135,13 +139,13 @@ struct MediumHomeWidget: View {
                     .tint(WidgetTheme.accent)
 
                 HStack(spacing: 7) {
-                    WidgetChip(label: "Habits", value: "\(daily.completedHabits.count)/\(activeHabitCount)", color: WidgetTheme.accent)
+                    WidgetChip(label: "Habits", value: "\(completedActiveHabitCount)/\(activeHabitCount)", color: WidgetTheme.accent)
                     WidgetChip(label: "Problems", value: "\(counts.attempted)/\(day.problems.count)", color: WidgetTheme.blue)
                 }
             }
 
             VStack(spacing: 7) {
-                ForEach(StudyHabit.activeCases(includePatternStudy: settings.includePatternStudy)) { habit in
+                ForEach(activeHabits) { habit in
                     Button(intent: ToggleHabitIntent(habitRawValue: habit.rawValue)) {
                         Image(systemName: daily.completedHabits.contains(habit) ? "checkmark.circle.fill" : habit.systemImage)
                             .font(.caption.weight(.black))
@@ -164,8 +168,9 @@ struct CircularLockWidget: View {
     let day: StudyDay
     let daily: DailyProgress
     let settings: StudySettings
+    let activeHabits: [StudyHabit]
 
-    private var fraction: Double { daily.completionFraction(for: day, settings: settings) }
+    private var fraction: Double { daily.completionFraction(for: day, settings: settings, hasRedoDue: activeHabits.contains(.review)) }
 
     var body: some View {
         Gauge(value: fraction) {
@@ -185,10 +190,12 @@ struct RectangularLockWidget: View {
     let day: StudyDay
     let daily: DailyProgress
     let settings: StudySettings
+    let activeHabits: [StudyHabit]
 
-    private var fraction: Double { daily.completionFraction(for: day, settings: settings) }
+    private var fraction: Double { daily.completionFraction(for: day, settings: settings, hasRedoDue: activeHabits.contains(.review)) }
     private var counts: StatusCounts { daily.counts(for: day) }
-    private var activeHabitCount: Int { StudyHabit.activeCases(includePatternStudy: settings.includePatternStudy).count }
+    private var activeHabitCount: Int { activeHabits.count }
+    private var completedActiveHabitCount: Int { activeHabits.filter { daily.completedHabits.contains($0) }.count }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -202,8 +209,8 @@ struct RectangularLockWidget: View {
             }
 
             HStack(spacing: 6) {
-                HabitDots(daily: daily, bright: false)
-                Text("\(daily.completedHabits.count)/\(activeHabitCount) habits")
+                HabitDots(daily: daily, activeHabits: activeHabits, bright: false)
+                Text("\(completedActiveHabitCount)/\(activeHabitCount) habits")
                     .font(.caption2.weight(.semibold))
                 Text("\(counts.attempted)/\(day.problems.count) problems")
                     .font(.caption2.weight(.semibold))
@@ -221,12 +228,14 @@ struct InlineLockWidget: View {
     let day: StudyDay
     let daily: DailyProgress
     let settings: StudySettings
+    let activeHabits: [StudyHabit]
 
     private var counts: StatusCounts { daily.counts(for: day) }
-    private var activeHabitCount: Int { StudyHabit.activeCases(includePatternStudy: settings.includePatternStudy).count }
+    private var activeHabitCount: Int { activeHabits.count }
+    private var completedActiveHabitCount: Int { activeHabits.filter { daily.completedHabits.contains($0) }.count }
 
     var body: some View {
-        Text("D\(day.day) - \(daily.completedHabits.count)/\(activeHabitCount) habits - \(counts.attempted)/\(day.problems.count) problems")
+        Text("D\(day.day) - \(completedActiveHabitCount)/\(activeHabitCount) habits - \(counts.attempted)/\(day.problems.count) problems")
             .widgetAccentable()
             .containerBackground(.clear, for: .widget)
     }
@@ -234,11 +243,12 @@ struct InlineLockWidget: View {
 
 struct HabitDots: View {
     let daily: DailyProgress
+    let activeHabits: [StudyHabit]
     let bright: Bool
 
     var body: some View {
         HStack(spacing: 5) {
-            ForEach(StudyHabit.allCases) { habit in
+            ForEach(activeHabits) { habit in
                 Circle()
                     .fill(dotColor(for: habit))
                     .frame(width: bright ? 8 : 6, height: bright ? 8 : 6)

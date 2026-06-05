@@ -5,10 +5,10 @@ NeatHabit is a SwiftUI iOS 26 tracker for the NeetCode 150 plan plus a daily sys
 ## Included
 
 - Dynamic plan generated from the official 150-question NeetCode bank.
-- Four daily habit checks: pattern study, problem block, review/redo, and system design.
+- Daily habit checks for system design, optional pattern study, and review/redo only when redo is scheduled.
 - Green/yellow/red problem tracking using the target definitions from the plan.
-- Redo queue for red problems from 2-3 days ago.
-- Pattern notes per day.
+- Redo dates for red problems, with an automatic suggestion and manual date picker.
+- Study notes per day.
 - Four tabs: Today, Roadmap, Progress, and Guide.
 - iOS 26 Liquid Glass styling with a subtle holographic card treatment.
 - Small and medium Home Screen widgets.
@@ -17,9 +17,9 @@ NeatHabit is a SwiftUI iOS 26 tracker for the NeetCode 150 plan plus a daily sys
 ## How to Use
 
 1. Open the Today tab and use the calendar button to set today as Day 1.
-2. Follow the daily flow: pattern study, problem block, review/redo, and system design.
+2. Follow the daily flow: solve the problem rows, complete system design, and add optional pattern study if enabled.
 3. Tap a problem row to cycle `Todo -> Green -> Yellow -> Red`.
-4. Use Red honestly. Red problems automatically appear in the redo queue 2-3 days later.
+4. Use Red honestly. Red problems get an automatic redo date, or you can pick the date yourself.
 5. Use Roadmap to jump around the 30-day plan.
 6. Use Progress to track the monthly goals: 80+ green, 40+ yellow, under 30 red.
 7. Add a Home Screen widget for daily status and a Lock Screen widget for quick habit pressure.

@@ -9,7 +9,7 @@ struct ToggleHabitIntent: AppIntent {
     @Parameter(title: "Habit") var habitRawValue: String
 
     init() {
-        habitRawValue = StudyHabit.problems.rawValue
+        habitRawValue = StudyHabit.systemDesign.rawValue
     }
 
     init(habitRawValue: String) {

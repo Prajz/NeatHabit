@@ -11,8 +11,19 @@ enum StudyHabit: String, CaseIterable, Codable, Hashable, Identifiable {
 
     var id: String { rawValue }
 
-    static func activeCases(includePatternStudy: Bool) -> [StudyHabit] {
-        includePatternStudy ? allCases : allCases.filter { $0 != .pattern }
+    static func activeCases(includePatternStudy: Bool, hasRedoDue: Bool = false) -> [StudyHabit] {
+        var habits: [StudyHabit] = []
+
+        if includePatternStudy {
+            habits.append(.pattern)
+        }
+
+        if hasRedoDue {
+            habits.append(.review)
+        }
+
+        habits.append(.systemDesign)
+        return habits
     }
 
     var title: String {
@@ -46,9 +57,9 @@ enum StudyHabit: String, CaseIterable, Codable, Hashable, Identifiable {
         case .pattern:
             return "Optional template review before solving."
         case .problems:
-            return "Solve the planned required questions."
+            return "Completes automatically from the question rows."
         case .review:
-            return "Review mistakes and redo anything due."
+            return "Only appears when redo work is due."
         case .systemDesign:
             return "Spend focused time on the daily design topic."
         }
@@ -124,7 +135,7 @@ enum ProblemStatus: String, CaseIterable, Codable, Hashable, Identifiable {
         case .yellow:
             return "Needed hint or video but coded it yourself"
         case .red:
-            return "Did not understand or copied; auto redo later"
+            return "Did not understand or copied; redo is scheduled"
         }
     }
 
@@ -150,7 +161,7 @@ struct StudySettings: Codable, Equatable {
 
     init(
         dailyMinutes: Int = 200,
-        includePatternStudy: Bool = true,
+        includePatternStudy: Bool = false,
         targetFinishDate: Date = Calendar.current.date(byAdding: .day, value: 29, to: Calendar.current.startOfDay(for: Date())) ?? Date(),
         extraProblems: [CustomProblem] = []
     ) {
@@ -161,7 +172,7 @@ struct StudySettings: Codable, Equatable {
     }
 
     var fixedMinutes: Int {
-        30 + 20 + (includePatternStudy ? 30 : 0)
+        20 + (includePatternStudy ? 30 : 0)
     }
 
     var problemBlockMinutes: Int {

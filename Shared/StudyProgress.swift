@@ -3,18 +3,18 @@ import Foundation
 struct DailyProgress: Codable, Equatable {
     var completedHabits: Set<StudyHabit>
     var problemStatuses: [String: ProblemStatus]
-    var redoLaterProblems: Set<String>
+    var redoDates: [String: Date]
     var note: String
 
     init(
         completedHabits: Set<StudyHabit> = [],
         problemStatuses: [String: ProblemStatus] = [:],
-        redoLaterProblems: Set<String> = [],
+        redoDates: [String: Date] = [:],
         note: String = ""
     ) {
         self.completedHabits = completedHabits
         self.problemStatuses = problemStatuses
-        self.redoLaterProblems = redoLaterProblems
+        self.redoDates = redoDates
         self.note = note
     }
 
@@ -22,8 +22,12 @@ struct DailyProgress: Codable, Equatable {
         problemStatuses[problem] ?? .untouched
     }
 
-    func isMarkedRedoLater(_ problem: String) -> Bool {
-        redoLaterProblems.contains(problem)
+    func redoDate(for problem: String) -> Date? {
+        redoDates[problem]
+    }
+
+    func isRedoScheduled(_ problem: String) -> Bool {
+        redoDates[problem] != nil
     }
 
     func counts(for day: StudyDay) -> StatusCounts {
@@ -32,8 +36,11 @@ struct DailyProgress: Codable, Equatable {
         }
     }
 
-    func completionFraction(for day: StudyDay, settings: StudySettings) -> Double {
-        let activeHabits = StudyHabit.activeCases(includePatternStudy: settings.includePatternStudy)
+    func completionFraction(for day: StudyDay, settings: StudySettings, hasRedoDue: Bool = false) -> Double {
+        let activeHabits = StudyHabit.activeCases(
+            includePatternStudy: settings.includePatternStudy,
+            hasRedoDue: hasRedoDue
+        )
         let completedHabitCount = activeHabits.filter { completedHabits.contains($0) }.count
         let completedProblems = day.problems.filter { status(for: $0) != .untouched }.count
         let completedItems = completedHabitCount + completedProblems
@@ -46,6 +53,7 @@ struct DailyProgress: Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case completedHabits
         case problemStatuses
+        case redoDates
         case redoLaterProblems
         case note
     }
@@ -54,8 +62,28 @@ struct DailyProgress: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         completedHabits = try container.decodeIfPresent(Set<StudyHabit>.self, forKey: .completedHabits) ?? []
         problemStatuses = try container.decodeIfPresent([String: ProblemStatus].self, forKey: .problemStatuses) ?? [:]
-        redoLaterProblems = try container.decodeIfPresent(Set<String>.self, forKey: .redoLaterProblems) ?? []
+        redoDates = try container.decodeIfPresent([String: Date].self, forKey: .redoDates) ?? [:]
+
+        let legacyRedoLaterProblems = try container.decodeIfPresent(Set<String>.self, forKey: .redoLaterProblems) ?? []
+        if !legacyRedoLaterProblems.isEmpty {
+            let fallbackDate = Calendar.current.startOfDay(
+                for: Calendar.current.date(byAdding: .day, value: 3, to: Date()) ?? Date()
+            )
+
+            for problem in legacyRedoLaterProblems where redoDates[problem] == nil {
+                redoDates[problem] = fallbackDate
+            }
+        }
+
         note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(completedHabits, forKey: .completedHabits)
+        try container.encode(problemStatuses, forKey: .problemStatuses)
+        try container.encode(redoDates, forKey: .redoDates)
+        try container.encode(note, forKey: .note)
     }
 }
 
@@ -92,7 +120,7 @@ struct StoredProgress: Codable, Equatable {
     func summary(for schedule: StudySchedule) -> PlanSummary {
         schedule.days.reduce(into: PlanSummary(totalRequiredProblems: schedule.requiredProblemCount)) { summary, day in
             let daily = dailyProgress(for: day.day)
-            let activeHabits = StudyHabit.activeCases(includePatternStudy: schedule.settings.includePatternStudy)
+            let activeHabits = activeHabits(for: day.day, in: schedule)
             summary.completedHabits += activeHabits.filter { daily.completedHabits.contains($0) }.count
             summary.totalHabits += activeHabits.count
 
@@ -102,35 +130,66 @@ struct StoredProgress: Codable, Equatable {
         }
     }
 
+    func activeHabits(for day: Int, in schedule: StudySchedule) -> [StudyHabit] {
+        StudyHabit.activeCases(
+            includePatternStudy: schedule.settings.includePatternStudy,
+            hasRedoDue: !redoCandidates(for: day, in: schedule).isEmpty
+        )
+    }
+
+    func completionFraction(for day: StudyDay, in schedule: StudySchedule) -> Double {
+        dailyProgress(for: day.day).completionFraction(
+            for: day,
+            settings: schedule.settings,
+            hasRedoDue: !redoCandidates(for: day.day, in: schedule).isEmpty
+        )
+    }
+
     func redoCandidates(for day: Int, in schedule: StudySchedule) -> [RedoCandidate] {
+        let calendar = Calendar.current
+        let selectedDay = schedule.day(day)
+        let selectedDate = calendar.startOfDay(for: selectedDay.date ?? Date())
         var seen = Set<String>()
         var candidates: [RedoCandidate] = []
 
-        for previousDay in [day - 3, day - 2] where previousDay >= 1 && previousDay <= schedule.totalDays {
+        for previousDay in 1...min(max(day, 1), schedule.totalDays) {
             let planDay = schedule.day(previousDay)
             let daily = dailyProgress(for: previousDay)
 
             for problem in planDay.problems where daily.status(for: problem) == .red {
-                let key = "auto-\(problem)"
+                let dueDate = daily.redoDate(for: problem) ?? legacyAutomaticRedoDate(for: previousDay, in: schedule)
+                guard dueDate <= selectedDate else { continue }
+
+                let key = "red-\(problem)"
                 guard !seen.contains(key) else { continue }
                 seen.insert(key)
-                candidates.append(RedoCandidate(day: previousDay, topic: planDay.topic, problem: problem, reason: .red))
+                candidates.append(
+                    RedoCandidate(
+                        day: previousDay,
+                        topic: planDay.topic,
+                        problem: problem,
+                        dueDate: dueDate,
+                        reason: .red
+                    )
+                )
             }
         }
 
-        for previousDay in 1..<day where previousDay <= schedule.totalDays {
-            let planDay = schedule.day(previousDay)
-            let daily = dailyProgress(for: previousDay)
-
-            for problem in planDay.problems where daily.redoLaterProblems.contains(problem) {
-                let key = "manual-\(problem)"
-                guard !seen.contains(key) else { continue }
-                seen.insert(key)
-                candidates.append(RedoCandidate(day: previousDay, topic: planDay.topic, problem: problem, reason: .manual))
+        return candidates.sorted { first, second in
+            if first.dueDate == second.dueDate {
+                return first.day < second.day
             }
-        }
 
-        return candidates
+            return first.dueDate < second.dueDate
+        }
+    }
+
+    private func legacyAutomaticRedoDate(for day: Int, in schedule: StudySchedule) -> Date {
+        let calendar = Calendar.current
+        let sourceDate = schedule.day(day).date ?? startDate
+        return calendar.startOfDay(
+            for: calendar.date(byAdding: .day, value: 3, to: sourceDate) ?? sourceDate
+        )
     }
 
     enum CodingKeys: String, CodingKey {
@@ -152,14 +211,11 @@ struct StoredProgress: Codable, Equatable {
 
 enum RedoReason: String, Codable, Equatable {
     case red
-    case manual
 
     var title: String {
         switch self {
         case .red:
-            return "Red"
-        case .manual:
-            return "Marked"
+            return "Redo"
         }
     }
 }
@@ -168,6 +224,7 @@ struct RedoCandidate: Identifiable, Equatable {
     let day: Int
     let topic: String
     let problem: String
+    let dueDate: Date
     let reason: RedoReason
 
     var id: String { "\(reason.rawValue)-\(day)-\(problem)" }
@@ -216,6 +273,10 @@ struct PlanSummary: Codable, Equatable {
 }
 
 enum ProgressPersistence {
+    static func hasSavedProgress(defaults: UserDefaults = sharedDefaults) -> Bool {
+        defaults.data(forKey: progressStorageKey) != nil
+    }
+
     static func load(defaults: UserDefaults = sharedDefaults) -> StoredProgress {
         guard
             let data = defaults.data(forKey: progressStorageKey),
