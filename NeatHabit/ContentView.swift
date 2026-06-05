@@ -1755,7 +1755,7 @@ private struct SystemDesignTopicsCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(
                     title: "System design topics",
-                    subtitle: "31 topics covering fundamentals, scale, reliability, and classic interview problems. Tap any topic for a deep dive."
+                    subtitle: "\(SystemDesignTopics.all.count) topics covering fundamentals, scale, reliability, and classic interview problems. Tap any topic for a deep dive."
                 )
 
                 VStack(spacing: 12) {

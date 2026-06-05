@@ -440,7 +440,7 @@ private struct TimeBudgetBreakdown: View {
     let schedule: StudySchedule
 
     private var designFraction: Double {
-        Double(schedule.settings.fixedMinutes) / Double(max(schedule.settings.dailyMinutes, 1))
+        Double(schedule.settings.systemDesignBlockMinutes) / Double(max(schedule.settings.dailyMinutes, 1))
     }
 
     private var problemFraction: Double {
@@ -474,7 +474,7 @@ private struct TimeBudgetBreakdown: View {
             .frame(height: 10)
 
             HStack(spacing: 10) {
-                BudgetLegendDot(title: "System design", value: "\(schedule.settings.fixedMinutes)m", color: Theme.ink)
+                BudgetLegendDot(title: "System design", value: "\(schedule.settings.systemDesignBlockMinutes)m", color: Theme.ink)
                 BudgetLegendDot(title: "Coding", value: "\(schedule.settings.problemBlockMinutes)m", color: Theme.accent)
             }
         }

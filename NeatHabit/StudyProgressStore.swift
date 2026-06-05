@@ -160,6 +160,7 @@ final class StudyProgressStore: ObservableObject {
         var nextProgress = progress
         nextProgress.settings.systemDesignMinutes = min(max(minutes, 10), 60)
         commit(nextProgress)
+        Task { await scheduleAllRemindersIfNeeded() }
     }
 
     func updateReminderTime(_ date: Date) {
@@ -193,7 +194,7 @@ final class StudyProgressStore: ObservableObject {
         let target = Calendar.current.startOfDay(for: date)
         nextProgress.settings.targetFinishDate = max(target, start)
 
-        let dayCount = Calendar.current.dateComponents([.day], from: start, to: max(target, start)).day ?? 0 + 1
+        let dayCount = (Calendar.current.dateComponents([.day], from: start, to: max(target, start)).day ?? 0) + 1
         if dayCount <= 30 {
             nextProgress.settings.systemDesignMinutes = 20
         } else if dayCount <= 60 {
@@ -339,12 +340,13 @@ final class StudyProgressStore: ObservableObject {
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
             var seenDates = Set<Date>()
+            let maxMorningReminders = 60
 
             for day in 1...currentSchedule.totalDays {
                 let candidates = progress.redoCandidates(for: day, in: currentSchedule)
                 for candidate in candidates {
                     let dueDay = calendar.startOfDay(for: candidate.dueDate)
-                    guard dueDay >= today, !seenDates.contains(dueDay) else { continue }
+                    guard dueDay >= today, !seenDates.contains(dueDay), seenDates.count < maxMorningReminders else { continue }
                     seenDates.insert(dueDay)
 
                     let content = UNMutableNotificationContent()
