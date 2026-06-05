@@ -5,6 +5,7 @@ import WidgetKit
 
 private let onboardingStorageKey = "neatHabit.onboarding.v1"
 private let dailyReminderIdentifier = "neatHabit.dailyReminder"
+private let morningReminderPrefix = "neatHabit.morning."
 private let maximumDailyMinutes = 240
 
 @MainActor
@@ -89,6 +90,7 @@ final class StudyProgressStore: ObservableObject {
     func setStatus(_ status: ProblemStatus, for problem: String, day: Int) {
         var nextProgress = progress
         var daily = nextProgress.dailyProgress(for: day)
+        let wasRed = daily.status(for: problem) == .red
         daily.problemStatuses[problem] = status
 
         if status == .red {
@@ -101,6 +103,10 @@ final class StudyProgressStore: ObservableObject {
 
         nextProgress.dayProgress[max(day, 1)] = daily
         commit(nextProgress)
+
+        if status == .red || wasRed {
+            Task { await scheduleMorningReminderIfNeeded() }
+        }
     }
 
     func cycleStatus(for problem: String, day: Int) {
@@ -116,6 +122,7 @@ final class StudyProgressStore: ObservableObject {
 
         nextProgress.dayProgress[max(day, 1)] = daily
         commit(nextProgress)
+        Task { await scheduleMorningReminderIfNeeded() }
     }
 
     func suggestedRedoDate(for day: Int) -> Date {
@@ -146,6 +153,13 @@ final class StudyProgressStore: ObservableObject {
         var nextProgress = progress
         nextProgress.settings.dailyMinutes = min(max(minutes, 80), maximumDailyMinutes)
         commit(nextProgress)
+        Task { await scheduleAllRemindersIfNeeded() }
+    }
+
+    func updateSystemDesignMinutes(_ minutes: Int) {
+        var nextProgress = progress
+        nextProgress.settings.systemDesignMinutes = min(max(minutes, 10), 60)
+        commit(nextProgress)
     }
 
     func updateReminderTime(_ date: Date) {
@@ -154,6 +168,7 @@ final class StudyProgressStore: ObservableObject {
         nextProgress.settings.reminderHour = min(max(components.hour ?? 19, 0), 23)
         nextProgress.settings.reminderMinute = min(max(components.minute ?? 0, 0), 59)
         commit(nextProgress)
+        Task { await scheduleAllRemindersIfNeeded() }
     }
 
     func updateNotificationsEnabled(_ enabled: Bool) {
@@ -161,8 +176,14 @@ final class StudyProgressStore: ObservableObject {
         nextProgress.settings.notificationsEnabled = enabled
         commit(nextProgress)
 
-        if !enabled {
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [dailyReminderIdentifier])
+        if enabled {
+            Task { await scheduleAllRemindersIfNeeded() }
+        } else {
+            Task {
+                let center = UNUserNotificationCenter.current()
+                center.removePendingNotificationRequests(withIdentifiers: [dailyReminderIdentifier])
+                await removeMorningReminders()
+            }
         }
     }
 
@@ -171,7 +192,18 @@ final class StudyProgressStore: ObservableObject {
         let start = Calendar.current.startOfDay(for: nextProgress.startDate)
         let target = Calendar.current.startOfDay(for: date)
         nextProgress.settings.targetFinishDate = max(target, start)
+
+        let dayCount = Calendar.current.dateComponents([.day], from: start, to: max(target, start)).day ?? 0 + 1
+        if dayCount <= 30 {
+            nextProgress.settings.systemDesignMinutes = 20
+        } else if dayCount <= 60 {
+            nextProgress.settings.systemDesignMinutes = 25
+        } else {
+            nextProgress.settings.systemDesignMinutes = 30
+        }
+
         commit(nextProgress)
+        Task { await scheduleAllRemindersIfNeeded() }
     }
 
     func addExtraProblem(title: String, sectionTitle: String) {
@@ -238,7 +270,7 @@ final class StudyProgressStore: ObservableObject {
         onboardingDefaults.set(true, forKey: onboardingStorageKey)
 
         Task {
-            await scheduleDailyReminderIfNeeded()
+            await scheduleAllRemindersIfNeeded()
         }
     }
 
@@ -255,6 +287,11 @@ final class StudyProgressStore: ObservableObject {
         progress = nextProgress
         ProgressPersistence.save(nextProgress)
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    private func scheduleAllRemindersIfNeeded() async {
+        await scheduleDailyReminderIfNeeded()
+        await scheduleMorningReminderIfNeeded()
     }
 
     private func scheduleDailyReminderIfNeeded() async {
@@ -286,5 +323,59 @@ final class StudyProgressStore: ObservableObject {
         } catch {
             // Notification permission can be denied; the plan should still start.
         }
+    }
+
+    private func scheduleMorningReminderIfNeeded() async {
+        guard progress.settings.notificationsEnabled else { return }
+
+        let center = UNUserNotificationCenter.current()
+        do {
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            guard granted else { return }
+
+            await removeMorningReminders()
+
+            let currentSchedule = schedule
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            var seenDates = Set<Date>()
+
+            for day in 1...currentSchedule.totalDays {
+                let candidates = progress.redoCandidates(for: day, in: currentSchedule)
+                for candidate in candidates {
+                    let dueDay = calendar.startOfDay(for: candidate.dueDate)
+                    guard dueDay >= today, !seenDates.contains(dueDay) else { continue }
+                    seenDates.insert(dueDay)
+
+                    let content = UNMutableNotificationContent()
+                    content.title = "Redo work due today"
+                    content.body = "You have redo problems scheduled. Tackle them before starting new work."
+                    content.sound = .default
+
+                    var components = calendar.dateComponents([.year, .month, .day], from: dueDay)
+                    components.hour = 9
+                    components.minute = 0
+
+                    let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                    let identifier = "\(morningReminderPrefix)\(Int(dueDay.timeIntervalSince1970))"
+                    let request = UNNotificationRequest(
+                        identifier: identifier,
+                        content: content,
+                        trigger: trigger
+                    )
+                    try await center.add(request)
+                }
+            }
+        } catch {
+            // Notification permission can be denied.
+        }
+    }
+
+    private func removeMorningReminders() async {
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+        let morningIDs = pending.filter { $0.identifier.hasPrefix(morningReminderPrefix) }.map(\.identifier)
+        guard !morningIDs.isEmpty else { return }
+        center.removePendingNotificationRequests(withIdentifiers: morningIDs)
     }
 }
