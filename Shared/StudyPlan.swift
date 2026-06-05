@@ -57,7 +57,7 @@ enum StudyHabit: String, CaseIterable, Codable, Hashable, Identifiable {
         case .review:
             return "Only appears when redo work is due."
         case .systemDesign:
-            return "Spend 20 minutes structuring the daily system design question."
+            return "Structure the daily system design question."
         }
     }
 
@@ -70,7 +70,7 @@ enum StudyHabit: String, CaseIterable, Codable, Hashable, Identifiable {
         case .review:
             return 30
         case .systemDesign:
-            return 20
+            return settings.systemDesignBlockMinutes
         }
     }
 
@@ -156,6 +156,7 @@ struct StudySettings: Codable, Equatable {
     var reminderHour: Int
     var reminderMinute: Int
     var notificationsEnabled: Bool
+    var systemDesignMinutes: Int
 
     init(
         dailyMinutes: Int = 200,
@@ -163,7 +164,8 @@ struct StudySettings: Codable, Equatable {
         extraProblems: [CustomProblem] = [],
         reminderHour: Int = 19,
         reminderMinute: Int = 0,
-        notificationsEnabled: Bool = true
+        notificationsEnabled: Bool = true,
+        systemDesignMinutes: Int = 20
     ) {
         self.dailyMinutes = dailyMinutes
         self.targetFinishDate = targetFinishDate
@@ -171,6 +173,7 @@ struct StudySettings: Codable, Equatable {
         self.reminderHour = min(max(reminderHour, 0), 23)
         self.reminderMinute = min(max(reminderMinute, 0), 59)
         self.notificationsEnabled = notificationsEnabled
+        self.systemDesignMinutes = min(max(systemDesignMinutes, 10), min(60, max(10, dailyMinutes - 30)))
     }
 
     enum CodingKeys: String, CodingKey {
@@ -180,6 +183,7 @@ struct StudySettings: Codable, Equatable {
         case reminderHour
         case reminderMinute
         case notificationsEnabled
+        case systemDesignMinutes
     }
 
     init(from decoder: Decoder) throws {
@@ -194,6 +198,7 @@ struct StudySettings: Codable, Equatable {
         reminderHour = min(max(try container.decodeIfPresent(Int.self, forKey: .reminderHour) ?? 19, 0), 23)
         reminderMinute = min(max(try container.decodeIfPresent(Int.self, forKey: .reminderMinute) ?? 0, 0), 59)
         notificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? true
+        systemDesignMinutes = min(max(try container.decodeIfPresent(Int.self, forKey: .systemDesignMinutes) ?? 20, 10), min(60, max(10, dailyMinutes - 30)))
     }
 
     func encode(to encoder: Encoder) throws {
@@ -204,14 +209,15 @@ struct StudySettings: Codable, Equatable {
         try container.encode(reminderHour, forKey: .reminderHour)
         try container.encode(reminderMinute, forKey: .reminderMinute)
         try container.encode(notificationsEnabled, forKey: .notificationsEnabled)
+        try container.encode(systemDesignMinutes, forKey: .systemDesignMinutes)
     }
 
-    var fixedMinutes: Int {
-        20
+    var systemDesignBlockMinutes: Int {
+        systemDesignMinutes
     }
 
     var problemBlockMinutes: Int {
-        max(30, dailyMinutes - fixedMinutes)
+        max(30, dailyMinutes - systemDesignBlockMinutes)
     }
 
     var estimatedProblemCapacity: Int {

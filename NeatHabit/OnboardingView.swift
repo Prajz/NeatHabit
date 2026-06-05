@@ -18,7 +18,7 @@ struct OnboardingView: View {
     private var problemMinutesText: String {
         guard schedule.averageProblemsPerDay > 0 else { return "Enough time for today's plan." }
         let minutes = Int(perQuestionMinutes.rounded())
-        return "\(dailyMinutes)m/day includes 20m system design. \(settings.problemBlockMinutes)m remains for coding: about \(minutes)m/question."
+        return "\(dailyMinutes)m/day includes \(settings.systemDesignMinutes)m system design. \(settings.problemBlockMinutes)m remains for coding: about \(minutes)m/question."
     }
 
     private var canStart: Bool {
@@ -52,7 +52,7 @@ struct OnboardingView: View {
                         eyebrow: "Setup",
                         symbol: "sparkles.rectangle.stack.fill",
                         title: "Build your daily plan.",
-                        subtitle: "NeetCode 150 plus a 20-minute system design rep each day."
+                        subtitle: "NeetCode 150 plus a daily system design rep."
                     ) {
                         VStack(spacing: 10) {
                             HStack(spacing: 10) {
@@ -61,7 +61,7 @@ struct OnboardingView: View {
                             }
 
                             OnboardingStepRow(number: "01", title: "Finish date", bodyText: "Sets questions/day.")
-                            OnboardingStepRow(number: "02", title: "Daily time", bodyText: "20m system design. Rest is coding time.")
+                            OnboardingStepRow(number: "02", title: "Daily time", bodyText: "System design reps. Rest is coding time.")
                             OnboardingStepRow(number: "03", title: "Reminder", bodyText: "A nudge, not plan math.")
                         }
                     }
@@ -440,7 +440,7 @@ private struct TimeBudgetBreakdown: View {
     let schedule: StudySchedule
 
     private var designFraction: Double {
-        Double(schedule.settings.fixedMinutes) / Double(max(schedule.settings.dailyMinutes, 1))
+        Double(schedule.settings.systemDesignBlockMinutes) / Double(max(schedule.settings.dailyMinutes, 1))
     }
 
     private var problemFraction: Double {
@@ -474,7 +474,7 @@ private struct TimeBudgetBreakdown: View {
             .frame(height: 10)
 
             HStack(spacing: 10) {
-                BudgetLegendDot(title: "System design", value: "\(schedule.settings.fixedMinutes)m", color: Theme.ink)
+                BudgetLegendDot(title: "System design", value: "\(schedule.settings.systemDesignBlockMinutes)m", color: Theme.ink)
                 BudgetLegendDot(title: "Coding", value: "\(schedule.settings.problemBlockMinutes)m", color: Theme.accent)
             }
         }

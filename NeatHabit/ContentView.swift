@@ -166,6 +166,7 @@ private struct GuideTab: View {
             VStack(spacing: 18) {
                 GuideHeaderCard()
                 GuideSetupCard(schedule: store.schedule)
+                SystemDesignTopicsCard()
                 ExtraPracticeCard()
                 GuideRulesCard()
             }
@@ -347,144 +348,102 @@ private struct DailyFlowCard: View {
     let settings: StudySettings
     let hasRedoDue: Bool
 
-    var body: some View {
-        LiquidGlassCard(tint: Theme.glassBlue) {
-            VStack(alignment: .leading, spacing: 16) {
-                SectionHeader(
-                    title: "System design",
-                    subtitle: "Spend 20 minutes on the daily design question before or after coding."
-                )
+    private var topic: SystemDesignTopic? {
+        SystemDesignTopics.topic(for: day.systemDesignFocus)
+    }
 
-                VStack(spacing: 11) {
-                    SystemDesignFocusRow(
-                        focus: day.systemDesignFocus,
-                        checkedIDs: dailyProgress.systemDesignChecks,
-                        toggle: { checkID in
-                            store.toggleSystemDesignCheck(
-                                checkID,
-                                day: day.day,
-                                allCheckIDs: systemDesignChecklist.map(\.id)
-                            )
+    private var understood: Bool {
+        dailyProgress.completedHabits.contains(.systemDesign)
+    }
+
+    var body: some View {
+        LiquidGlassCard(tint: understood ? Theme.accent : Theme.glassBlue) {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Daily system design")
+                            .eyebrow()
+
+                        if let topic {
+                            Text(topic.title)
+                                .font(AppFont.display(size: 24, weight: .black))
+                                .tracking(-0.6)
+                                .foregroundStyle(Theme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Text(topic.category)
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Theme.accent.opacity(0.11), in: Capsule())
+                        } else {
+                            Text(day.systemDesignFocus)
+                                .font(AppFont.display(size: 24, weight: .black))
+                                .tracking(-0.6)
+                                .foregroundStyle(Theme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
+                    }
+
+                    Spacer(minLength: 8)
+
+                    if understood {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.title.weight(.black))
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    if let topic {
+                        NavigationLink {
+                            SystemDesignDetailView(topic: topic)
+                        } label: {
+                            Label("Read topic", systemImage: "book.pages.fill")
+                                .font(.subheadline.weight(.black))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SWSecondaryGlassButtonStyle(tint: Theme.accent))
+                    }
+
+                    if understood {
+                        Button {
+                            let allIDs = systemDesignChecklist.map(\.id)
+                            store.setSystemDesignChecksCompleted(false, day: day.day, allCheckIDs: allIDs)
+                        } label: {
+                            Label("Mark unread", systemImage: "arrow.uturn.backward")
+                                .font(.subheadline.weight(.black))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SWSecondaryGlassButtonStyle(tint: Theme.glassBlue))
+                    } else {
+                        Button {
+                            let allIDs = systemDesignChecklist.map(\.id)
+                            store.setSystemDesignChecksCompleted(true, day: day.day, allCheckIDs: allIDs)
+                        } label: {
+                            Label("I understand", systemImage: "checkmark")
+                                .font(.subheadline.weight(.black))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SWPrimaryGlassButtonStyle(tint: Theme.accent))
+                    }
+                }
+
+                if hasRedoDue {
+                    Divider()
+                        .overlay(Theme.hairline)
+
+                    HabitRow(
+                        habit: .review,
+                        settings: settings,
+                        completed: dailyProgress.completedHabits.contains(.review)
                     ) {
-                        store.setSystemDesignChecksCompleted(
-                            !Set(systemDesignChecklist.map(\.id)).isSubset(of: dailyProgress.systemDesignChecks),
-                            day: day.day,
-                            allCheckIDs: systemDesignChecklist.map(\.id)
-                        )
-                    }
-
-                    if hasRedoDue {
-                        HabitRow(
-                            habit: .review,
-                            settings: settings,
-                            completed: dailyProgress.completedHabits.contains(.review)
-                        ) {
-                            store.toggleHabit(.review, day: day.day)
-                        }
+                        store.toggleHabit(.review, day: day.day)
                     }
                 }
             }
         }
-    }
-}
-
-private struct SystemDesignFocusRow: View {
-    let focus: String
-    let checkedIDs: Set<String>
-    let toggle: (String) -> Void
-    let toggleComplete: () -> Void
-
-    private var completed: Bool {
-        Set(systemDesignChecklist.map(\.id)).isSubset(of: checkedIDs)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                Image(systemName: completed ? "checkmark.circle.fill" : "sparkles.rectangle.stack.fill")
-                    .font(.title3.weight(.black))
-                    .foregroundStyle(completed ? Theme.accent : Theme.glassBlue)
-                    .frame(width: 44, height: 44)
-                    .background((completed ? Theme.accent : Theme.glassBlue).opacity(0.13), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("20-minute design rep")
-                        .font(.headline.weight(.black))
-                        .foregroundStyle(Theme.ink)
-                    Text(completed ? "Ready to explain" : "Build the interview answer in parts")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Theme.muted)
-                }
-
-                Spacer(minLength: 0)
-
-                Button(completed ? "Clear" : "Mark all") {
-                    toggleComplete()
-                }
-                .font(.caption.weight(.black))
-                .foregroundStyle(Theme.accent)
-            }
-
-            Text(focus)
-                .font(.title3.weight(.black))
-                .tracking(-0.35)
-                .foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(spacing: 8) {
-                ForEach(systemDesignChecklist) { item in
-                    SystemDesignCheckRow(
-                        item: item,
-                        checked: checkedIDs.contains(item.id),
-                        toggle: { toggle(item.id) }
-                    )
-                }
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Theme.surface)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke((completed ? Theme.accent : Theme.glassBlue).opacity(0.35), lineWidth: 1)
-        }
-        .shadow(color: Theme.cardShadow.opacity(0.12), radius: 18, x: 0, y: 12)
-    }
-}
-
-private struct SystemDesignCheckRow: View {
-    let item: SystemDesignChecklistItem
-    let checked: Bool
-    let toggle: () -> Void
-
-    var body: some View {
-        Button(action: toggle) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: checked ? "checkmark.circle.fill" : "circle")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(checked ? Theme.accent : Theme.muted.opacity(0.55))
-                    .padding(.top, 1)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(.subheadline.weight(.black))
-                        .foregroundStyle(Theme.ink)
-                    Text(item.prompt)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-            }
-            .padding(11)
-            .background(checked ? Theme.accent.opacity(0.08) : Theme.cardFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -1441,7 +1400,7 @@ private struct GuideHeaderCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("How to use NeatHabit")
                     .eyebrow()
-                Text("Adjust setup only when the plan needs to change.")
+                Text("Tap any metric to adjust it inline. The plan rebalances automatically.")
                     .font(AppFont.display(size: 28, weight: .black))
                     .tracking(-0.7)
                     .foregroundStyle(Theme.ink)
@@ -1455,19 +1414,262 @@ private struct GuideSetupCard: View {
     @EnvironmentObject private var store: StudyProgressStore
     let schedule: StudySchedule
 
+    @State private var showDateEditor = false
+    @State private var showTimeEditor = false
+    @State private var showReminderEditor = false
+
+    private var perQuestionMinutes: Int {
+        guard schedule.averageProblemsPerDay > 0 else { return schedule.settings.problemBlockMinutes }
+        return Int((Double(schedule.settings.problemBlockMinutes) / schedule.averageProblemsPerDay).rounded())
+    }
+
     var body: some View {
         LiquidGlassCard(tint: Theme.accent) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(
                     title: "Plan setup",
-                    subtitle: "Use onboarding when you want to change the plan shape."
+                    subtitle: "Tap any tile to adjust. The plan rebalances instantly."
                 )
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                     MetricTile(title: "Plan days", value: "\(schedule.totalDays)", symbol: "calendar", tint: Theme.accent)
-                    MetricTile(title: "Target", value: shortDateText(schedule.settings.targetFinishDate), symbol: "flag.checkered", tint: Theme.glassBlue)
-                    MetricTile(title: "Daily", value: "\(schedule.settings.dailyMinutes)m", symbol: "timer", tint: Theme.glassBlue)
-                    MetricTile(title: "Reminder", value: schedule.settings.reminderDate.formatted(.dateTime.hour().minute()), symbol: "bell.fill", tint: Theme.glassBlue)
+
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                            showDateEditor.toggle()
+                            showTimeEditor = false
+                            showReminderEditor = false
+                        }
+                    } label: {
+                        MetricTile(title: "Target", value: shortDateText(schedule.settings.targetFinishDate), symbol: "flag.checkered", tint: Theme.glassBlue)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                            showTimeEditor.toggle()
+                            showDateEditor = false
+                            showReminderEditor = false
+                        }
+                    } label: {
+                        MetricTile(title: "Daily time", value: "\(schedule.settings.dailyMinutes)m", symbol: "timer", tint: Theme.glassBlue)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                            showReminderEditor.toggle()
+                            showDateEditor = false
+                            showTimeEditor = false
+                        }
+                    } label: {
+                        MetricTile(title: "Reminder", value: schedule.settings.reminderDate.formatted(.dateTime.hour().minute()), symbol: settings.notificationsEnabled ? "bell.fill" : "bell.slash.fill", tint: Theme.glassBlue)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if showDateEditor {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            Text("Target finish date")
+                                .font(.headline.weight(.black))
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                            Button("Done") {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                                    showDateEditor = false
+                                }
+                            }
+                            .font(.subheadline.weight(.black))
+                            .foregroundStyle(Theme.accent)
+                        }
+
+                        DatePicker(
+                            "Finish date",
+                            selection: Binding(
+                                get: { store.progress.settings.targetFinishDate },
+                                set: { store.updateTargetFinishDate($0) }
+                            ),
+                            in: Calendar.current.startOfDay(for: store.progress.startDate)...,
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(.graphical)
+                        .tint(Theme.accent)
+                        .padding(10)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                        HStack(spacing: 8) {
+                            Text("\(schedule.totalDays) plan days")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Theme.ink)
+                            Text("·")
+                            Text("~\(String(format: "%.1f", schedule.averageProblemsPerDay)) problems/day")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.muted)
+                            Text("·")
+                            Text("\(schedule.settings.systemDesignMinutes)m design")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.muted)
+                        }
+                        .padding(12)
+                        .background(Theme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .padding(14)
+                    .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+
+                if showTimeEditor {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            Text("Daily time budget")
+                                .font(.headline.weight(.black))
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                            Button("Done") {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                                    showTimeEditor = false
+                                }
+                            }
+                            .font(.subheadline.weight(.black))
+                            .foregroundStyle(Theme.accent)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("\(schedule.settings.dailyMinutes)")
+                                    .font(AppFont.display(size: 34, weight: .black))
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText())
+                                    .foregroundStyle(Theme.ink)
+                                Text("minutes/day")
+                                    .font(.headline.weight(.bold))
+                                    .foregroundStyle(Theme.muted)
+                                Spacer(minLength: 0)
+                            }
+
+                            Slider(
+                                value: Binding(
+                                    get: { Double(schedule.settings.dailyMinutes) },
+                                    set: { store.updateDailyMinutes(Int($0)) }
+                                ),
+                                in: 80...240,
+                                step: 10
+                            )
+                            .tint(Theme.accent)
+
+                            HStack {
+                                Text("80m")
+                                Spacer()
+                                Text("240m")
+                            }
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.muted)
+                        }
+                        .padding(14)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("System design")
+                                    .font(.subheadline.weight(.black))
+                                    .foregroundStyle(Theme.ink)
+                                Spacer()
+                                Text("\(schedule.settings.systemDesignMinutes)m")
+                                    .font(.title3.weight(.black))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.accent)
+                            }
+
+                            Stepper(
+                                "Design rep duration",
+                                value: Binding(
+                                    get: { schedule.settings.systemDesignMinutes },
+                                    set: { store.updateSystemDesignMinutes($0) }
+                                ),
+                                in: 10...60,
+                                step: 5
+                            )
+                            .tint(Theme.accent)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.muted)
+
+                            if schedule.settings.systemDesignMinutes > 20 {
+                                Text("Longer plans benefit from deeper design reps. Each topic gets more thorough coverage.")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(Theme.muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(14)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                        let effectiveSD = schedule.settings.systemDesignMinutes
+                        let codingTime = schedule.settings.dailyMinutes - effectiveSD
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Budget: \(effectiveSD)m design + \(codingTime)m coding = ~\(perQuestionMinutes)m/question")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(perQuestionMinutes >= 20 ? Theme.green : Theme.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(12)
+                        .background((perQuestionMinutes >= 20 ? Theme.green : Theme.red).opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .padding(14)
+                    .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+
+                if showReminderEditor {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            Text("Daily reminder")
+                                .font(.headline.weight(.black))
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                            Button("Done") {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                                    showReminderEditor = false
+                                }
+                            }
+                            .font(.subheadline.weight(.black))
+                            .foregroundStyle(Theme.accent)
+                        }
+
+                        DatePicker(
+                            "Reminder time",
+                            selection: Binding(
+                                get: { settings.reminderDate },
+                                set: { store.updateReminderTime($0) }
+                            ),
+                            displayedComponents: .hourAndMinute
+                        )
+                        .datePickerStyle(.wheel)
+                        .labelsHidden()
+                        .tint(Theme.accent)
+                        .frame(height: 138)
+                        .clipped()
+                        .padding(.horizontal, 10)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                        Toggle(
+                            "Daily notification",
+                            isOn: Binding(
+                                get: { settings.notificationsEnabled },
+                                set: { store.updateNotificationsEnabled($0) }
+                            )
+                        )
+                        .font(.headline.weight(.bold))
+                        .tint(Theme.accent)
+                        .padding(14)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                        Text("A 9am morning check-in is also scheduled when notifications are on.")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 4)
+                    }
+                    .padding(14)
+                    .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
 
                 if schedule.dailyLoadIsOverCapacity {
@@ -1498,6 +1700,10 @@ private struct GuideSetupCard: View {
             }
         }
     }
+
+    private var settings: StudySettings {
+        store.progress.settings
+    }
 }
 
 private struct GuideRulesCard: View {
@@ -1524,8 +1730,96 @@ private struct GuideRulesCard: View {
                 GuideRuleRow(
                     symbol: "server.rack",
                     title: "System design",
-                    bodyText: "Budget 20 minutes for one design question: scope, API/data, flow, bottleneck, tradeoff."
+                    bodyText: "Work through one design topic per day: scope, API/data, flow, bottleneck, tradeoff. Tap the topic on the Today tab for a deep dive."
                 )
+            }
+        }
+    }
+}
+
+private struct SystemDesignTopicsCard: View {
+    @State private var selectedCategory: String?
+
+    private var categories: [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for topic in SystemDesignTopics.all where !seen.contains(topic.category) {
+            seen.insert(topic.category)
+            result.append(topic.category)
+        }
+        return result
+    }
+
+    var body: some View {
+        LiquidGlassCard(tint: Theme.accent) {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader(
+                    title: "System design topics",
+                    subtitle: "\(SystemDesignTopics.all.count) topics covering fundamentals, scale, reliability, and classic interview problems. Tap any topic for a deep dive."
+                )
+
+                VStack(spacing: 12) {
+                    ForEach(categories, id: \.self) { category in
+                        DisclosureGroup(
+                            isExpanded: Binding(
+                                get: { selectedCategory == category },
+                                set: { selectedCategory = $0 ? category : nil }
+                            )
+                        ) {
+                            VStack(spacing: 8) {
+                                ForEach(SystemDesignTopics.all.filter { $0.category == category }) { topic in
+                                    NavigationLink {
+                                        SystemDesignDetailView(topic: topic)
+                                    } label: {
+                                        HStack(spacing: 10) {
+                                            Image(systemName: topic.icon)
+                                                .font(.caption.weight(.black))
+                                                .foregroundStyle(Theme.accent)
+                                                .frame(width: 30, height: 30)
+                                                .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                                            VStack(alignment: .leading, spacing: 1) {
+                                                Text(topic.title)
+                                                    .font(.subheadline.weight(.bold))
+                                                    .foregroundStyle(Theme.ink)
+                                                Text(topic.concepts.count > 0 ? "\(topic.concepts.count) concepts" : "")
+                                                    .font(.caption2.weight(.medium))
+                                                    .foregroundStyle(Theme.muted)
+                                            }
+
+                                            Spacer(minLength: 0)
+
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundStyle(Theme.muted.opacity(0.5))
+                                        }
+                                        .padding(10)
+                                        .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.top, 8)
+                        } label: {
+                            HStack {
+                                Text(category)
+                                    .font(.headline.weight(.black))
+                                    .foregroundStyle(Theme.ink)
+
+                                Spacer()
+
+                                Text("\(SystemDesignTopics.all.filter { $0.category == category }.count)")
+                                    .font(.caption.weight(.black))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.accent)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .background(Theme.accent.opacity(0.10), in: Capsule())
+                            }
+                        }
+                        .tint(Theme.accent)
+                    }
+                }
             }
         }
     }
