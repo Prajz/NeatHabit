@@ -1,7 +1,12 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    private let minDailyMinutes = 20
     private let maxDailyMinutes = 240
+    private let minSystemDesignMinutes = 15
+    private let maxSystemDesignMinutes = 40
+    private let minQuestionMinutes = 5
+    private let maxQuestionMinutes = 200
     private let comfortablePerQuestionMinutes = 20
 
     @EnvironmentObject private var store: StudyProgressStore
@@ -10,15 +15,23 @@ struct OnboardingView: View {
 
     private var schedule: StudySchedule { store.schedule }
     private var settings: StudySettings { store.progress.settings }
-    private var dailyMinutes: Int { min(settings.dailyMinutes, maxDailyMinutes) }
+    private var codingMinutes: Int {
+        min(max(settings.problemBlockMinutes, minQuestionMinutes), maxQuestionMinutes)
+    }
+    private var totalMinutes: Int {
+        settings.systemDesignMinutes + codingMinutes
+    }
     private var perQuestionMinutes: Double {
         guard schedule.averageProblemsPerDay > 0 else { return Double(settings.problemBlockMinutes) }
         return Double(settings.problemBlockMinutes) / schedule.averageProblemsPerDay
     }
-    private var problemMinutesText: String {
+    private var perQuestionLabel: String {
         guard schedule.averageProblemsPerDay > 0 else { return "Enough time for today's plan." }
         let minutes = Int(perQuestionMinutes.rounded())
-        return "\(dailyMinutes)m/day includes \(settings.systemDesignMinutes)m system design. \(settings.problemBlockMinutes)m remains for coding: about \(minutes)m/question."
+        if perQuestionMinutes >= Double(comfortablePerQuestionMinutes) {
+            return "~\(minutes) min/question — comfortable"
+        }
+        return "~\(minutes) min/question — under 20 min is tight"
     }
 
     private var canStart: Bool {
@@ -46,7 +59,7 @@ struct OnboardingView: View {
         ZStack {
             AppBackground()
 
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 TabView(selection: $page) {
                     OnboardingPageCard(
                         eyebrow: "Setup",
@@ -54,8 +67,8 @@ struct OnboardingView: View {
                         title: "Build your daily plan.",
                         subtitle: "NeetCode 150 plus a daily system design rep."
                     ) {
-                        VStack(spacing: 10) {
-                            HStack(spacing: 10) {
+                        VStack(spacing: 8) {
+                            HStack(spacing: 8) {
                                 CompactMetricTile(title: "Questions", value: "\(schedule.requiredProblemCount)", symbol: "checklist", tint: Theme.accent)
                                 CompactMetricTile(title: "Starts", value: "Day \(store.progress.currentDayNumber(in: schedule))", symbol: "target", tint: Theme.glassBlue)
                             }
@@ -73,7 +86,7 @@ struct OnboardingView: View {
                         title: "Pick a finish date.",
                         subtitle: "More days means fewer questions/day."
                     ) {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 8) {
                             DatePicker(
                                 "Target finish date",
                                 selection: Binding(
@@ -84,8 +97,8 @@ struct OnboardingView: View {
                             )
                             .datePickerStyle(.graphical)
                             .tint(Theme.accent)
-                            .padding(10)
-                            .frame(maxHeight: 350)
+                            .padding(8)
+                            .frame(maxHeight: 320)
                             .glassControlBackground(tint: Theme.accent)
 
                             TargetImpactCard(title: "Date impact", schedule: schedule)
@@ -97,45 +110,97 @@ struct OnboardingView: View {
                         eyebrow: "Time",
                         symbol: "timer",
                         title: "How much time daily?",
-                        subtitle: problemMinutesText
+                        subtitle: "Split your day between system design and LeetCode."
                     ) {
-                        VStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 10) {
+                        VStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 HStack(alignment: .firstTextBaseline) {
-                                    Text("\(dailyMinutes)")
-                                        .font(AppFont.display(size: 38, weight: .black))
+                                    Text("\(settings.systemDesignMinutes)")
+                                        .font(AppFont.display(size: 26, weight: .black))
                                         .monospacedDigit()
                                         .contentTransition(.numericText())
                                         .foregroundStyle(Theme.ink)
-                                    Text("minutes/day")
-                                        .font(.headline.weight(.black))
+                                    Text("min system design")
+                                        .font(.caption.weight(.black))
                                         .foregroundStyle(Theme.muted)
                                     Spacer(minLength: 0)
                                 }
 
                                 Slider(
                                     value: Binding(
-                                        get: { Double(dailyMinutes) },
-                                        set: { updateDailyMinutes(Int($0)) }
+                                        get: { Double(settings.systemDesignMinutes) },
+                                        set: { updateSystemDesignMinutes(Int($0)) }
                                     ),
-                                    in: 80...Double(maxDailyMinutes),
-                                    step: 10
+                                    in: Double(minSystemDesignMinutes)...Double(maxSystemDesignMinutes),
+                                    step: 5
                                 )
-                                .tint(canStart ? Theme.accent : Theme.red)
+                                .tint(Theme.ink.opacity(0.72))
 
                                 HStack {
-                                    Text("80m")
+                                    Text("\(minSystemDesignMinutes)m")
                                     Spacer()
-                                    Text("Max \(maxDailyMinutes)m/day")
+                                    Text("\(maxSystemDesignMinutes)m max")
                                 }
-                                .font(.caption.weight(.bold))
+                                .font(.caption2.weight(.bold))
                                 .foregroundStyle(Theme.muted)
                             }
-                            .padding(14)
-                            .glassControlBackground(tint: canStart ? Theme.accent : Theme.red)
+                            .padding(10)
+                            .glassControlBackground(tint: Theme.ink.opacity(0.72))
 
-                            TimeBudgetBreakdown(schedule: schedule)
-                            TimeImpactCard(title: "Time impact", schedule: schedule)
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text("\(codingMinutes)")
+                                        .font(AppFont.display(size: 26, weight: .black))
+                                        .monospacedDigit()
+                                        .contentTransition(.numericText())
+                                        .foregroundStyle(Theme.ink)
+                                    Text("min LeetCode")
+                                        .font(.caption.weight(.black))
+                                        .foregroundStyle(Theme.muted)
+                                    Spacer(minLength: 0)
+                                }
+
+                                Slider(
+                                    value: Binding(
+                                        get: { Double(codingMinutes) },
+                                        set: { updateProblemBlockMinutes(Int($0)) }
+                                    ),
+                                    in: Double(minQuestionMinutes)...Double(maxQuestionMinutes),
+                                    step: 5
+                                )
+                                .tint(Theme.accent)
+
+                                HStack {
+                                    Text("\(minQuestionMinutes)m")
+                                    Spacer()
+                                    Text("\(maxQuestionMinutes)m max")
+                                }
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(Theme.muted)
+                            }
+                            .padding(10)
+                            .glassControlBackground(tint: Theme.accent)
+
+                            HStack {
+                                Text("\(settings.systemDesignMinutes)m + \(codingMinutes)m")
+                                    .font(.caption.weight(.black))
+                                    .foregroundStyle(Theme.muted)
+                                Text("= \(totalMinutes)m total")
+                                    .font(.subheadline.weight(.black))
+                                    .foregroundStyle(Theme.ink)
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText())
+                            }
+
+                            if !canStart && schedule.averageProblemsPerDay > 0 {
+                                Label(perQuestionLabel, systemImage: "exclamationmark.triangle.fill")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(Theme.red)
+                            } else if schedule.averageProblemsPerDay > 0 {
+                                Text(perQuestionLabel)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(Theme.green)
+                            }
                         }
                     }
                     .tag(2)
@@ -146,7 +211,7 @@ struct OnboardingView: View {
                         title: "Set a reminder.",
                         subtitle: "Pick a time for the daily nudge."
                     ) {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 8) {
                             DatePicker(
                                 "Reminder time",
                                 selection: Binding(
@@ -158,9 +223,9 @@ struct OnboardingView: View {
                             .datePickerStyle(.wheel)
                             .labelsHidden()
                             .tint(Theme.accent)
-                            .frame(height: 138)
+                            .frame(height: 120)
                             .clipped()
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, 8)
                             .glassControlBackground(tint: Theme.glassBlue)
 
                             Toggle(
@@ -172,7 +237,7 @@ struct OnboardingView: View {
                             )
                             .font(.headline.weight(.bold))
                             .tint(Theme.accent)
-                            .padding(14)
+                            .padding(10)
                             .glassControlBackground(tint: settings.notificationsEnabled ? Theme.accent : Theme.glassBlue)
 
                             ReminderPreviewCard(settings: settings)
@@ -187,9 +252,18 @@ struct OnboardingView: View {
                         title: canStart ? "Start your plan." : "Add more time.",
                         subtitle: "You can change this later from Guide."
                     ) {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 8) {
                             TargetImpactCard(title: "Date impact", schedule: schedule)
-                            TimeImpactCard(title: "Time impact", schedule: schedule)
+                            TimeBudgetBreakdown(schedule: schedule)
+                            if schedule.averageProblemsPerDay > 0 {
+                                HStack {
+                                    Text(perQuestionLabel)
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(canStart ? Theme.green : Theme.red)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 4)
+                            }
                             ReminderPreviewCard(settings: settings)
                         }
                     }
@@ -240,7 +314,7 @@ struct OnboardingView: View {
                     .shimmerSweep(duration: 1.15, delay: 0.8)
                 }
                 .padding(.horizontal, 22)
-                .padding(.bottom, 24)
+                .padding(.bottom, 16)
             }
         }
         .opacity(appeared ? 1 : 0)
@@ -267,10 +341,17 @@ struct OnboardingView: View {
         }
     }
 
-    private func updateDailyMinutes(_ minutes: Int) {
-        let clampedMinutes = min(max(minutes, 80), maxDailyMinutes)
-        guard settings.dailyMinutes != clampedMinutes else { return }
-        store.updateDailyMinutes(clampedMinutes)
+    private func updateSystemDesignMinutes(_ minutes: Int) {
+        let clampedMinutes = min(max(minutes, minSystemDesignMinutes), maxSystemDesignMinutes)
+        guard settings.systemDesignMinutes != clampedMinutes else { return }
+        store.updateSystemDesignMinutes(clampedMinutes)
+        Haptics.selection()
+    }
+
+    private func updateProblemBlockMinutes(_ minutes: Int) {
+        let clampedMinutes = min(max(minutes, minQuestionMinutes), maxQuestionMinutes)
+        guard settings.problemBlockMinutes != clampedMinutes else { return }
+        store.updateProblemBlockMinutes(clampedMinutes)
         Haptics.selection()
     }
 
@@ -292,8 +373,14 @@ struct OnboardingView: View {
     }
 
     private func clampDailyMinutesIfNeeded() {
-        guard settings.dailyMinutes > maxDailyMinutes else { return }
-        store.updateDailyMinutes(maxDailyMinutes)
+        let sd = min(max(settings.systemDesignMinutes, minSystemDesignMinutes), maxSystemDesignMinutes)
+        let pb = min(max(settings.problemBlockMinutes, minQuestionMinutes), maxQuestionMinutes)
+        if sd != settings.systemDesignMinutes {
+            store.updateSystemDesignMinutes(sd)
+        }
+        if pb != settings.problemBlockMinutes {
+            store.updateProblemBlockMinutes(pb)
+        }
     }
 }
 
@@ -322,26 +409,26 @@ private struct OnboardingPageCard<Content: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
             LiquidGlassCard(tint: tint) {
-                VStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .center, spacing: 6) {
                     Image(systemName: symbol)
-                        .font(AppFont.display(size: 42, weight: .black))
+                        .font(AppFont.display(size: 30, weight: .black))
                         .foregroundStyle(tint)
-                        .frame(width: 62, height: 62)
-                        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .frame(width: 48, height: 48)
+                        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                     Text(eyebrow)
                         .eyebrow(color: tint)
                     Text(title)
-                        .font(AppFont.display(size: 30, weight: .black))
-                        .tracking(-0.9)
+                        .font(AppFont.display(size: 24, weight: .black))
+                        .tracking(-0.7)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(Theme.ink)
                         .lineSpacing(-1)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(subtitle)
-                        .font(.subheadline.weight(.medium))
+                        .font(.caption.weight(.medium))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(Theme.muted)
                         .lineSpacing(1)
@@ -352,8 +439,8 @@ private struct OnboardingPageCard<Content: View>: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 18)
-        .padding(.top, 18)
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
     }
 }
 
@@ -366,26 +453,26 @@ private struct TargetImpactCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .font(.headline.weight(.black))
+                    .font(.subheadline.weight(.black))
                     .foregroundStyle(Theme.ink)
                 Spacer(minLength: 8)
                 Text(isComfortable ? "Balanced" : "Tight")
-                    .font(.caption.weight(.black))
+                    .font(.caption2.weight(.black))
                     .foregroundStyle(isComfortable ? Theme.green : Theme.red)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background((isComfortable ? Theme.green : Theme.red).opacity(0.12), in: Capsule())
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 CompactMetricTile(title: "Plan days", value: "\(schedule.totalDays)", symbol: "calendar", tint: Theme.accent)
                 CompactMetricTile(title: "Questions/day", value: String(format: "%.1f", schedule.averageProblemsPerDay), symbol: "keyboard.fill", tint: Theme.accent)
             }
         }
-        .padding(13)
+        .padding(10)
         .glassControlBackground(tint: isComfortable ? Theme.accent : Theme.red)
     }
 }
@@ -405,33 +492,33 @@ private struct TimeImpactCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .font(.headline.weight(.black))
+                    .font(.subheadline.weight(.black))
                     .foregroundStyle(Theme.ink)
                 Spacer(minLength: 8)
                 Text(isComfortable ? "Enough" : "Tight")
-                    .font(.caption.weight(.black))
+                    .font(.caption2.weight(.black))
                     .foregroundStyle(isComfortable ? Theme.green : Theme.red)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background((isComfortable ? Theme.green : Theme.red).opacity(0.12), in: Capsule())
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 CompactMetricTile(title: "Coding time", value: "\(schedule.settings.problemBlockMinutes)m", symbol: "keyboard.fill", tint: Theme.glassBlue)
                 CompactMetricTile(title: "Per question", value: "\(perQuestionMinutes)m", symbol: "timer", tint: isComfortable ? Theme.green : Theme.red)
             }
 
             if !isComfortable {
                 Text("19m/question or under is tight. Add time or push the finish date.")
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(Theme.red)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(13)
+        .padding(10)
         .glassControlBackground(tint: isComfortable ? Theme.accent : Theme.red)
     }
 }
@@ -448,14 +535,14 @@ private struct TimeBudgetBreakdown: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Label("Daily budget", systemImage: "chart.bar.fill")
-                    .font(.subheadline.weight(.black))
+                    .font(.caption.weight(.black))
                     .foregroundStyle(Theme.ink)
                 Spacer()
                 Text("\(schedule.settings.dailyMinutes)m")
-                    .font(.subheadline.weight(.black))
+                    .font(.caption.weight(.black))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .foregroundStyle(Theme.accent)
@@ -463,22 +550,22 @@ private struct TimeBudgetBreakdown: View {
 
             GeometryReader { proxy in
                 HStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(Theme.ink.opacity(0.72))
-                        .frame(width: max(20, proxy.size.width * designFraction))
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .frame(width: max(16, proxy.size.width * designFraction))
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(Theme.accent)
-                        .frame(width: max(20, proxy.size.width * problemFraction))
+                        .frame(width: max(16, proxy.size.width * problemFraction))
                 }
             }
-            .frame(height: 10)
+            .frame(height: 8)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 BudgetLegendDot(title: "System design", value: "\(schedule.settings.systemDesignBlockMinutes)m", color: Theme.ink)
                 BudgetLegendDot(title: "Coding", value: "\(schedule.settings.problemBlockMinutes)m", color: Theme.accent)
             }
         }
-        .padding(13)
+        .padding(10)
         .glassControlBackground(tint: Theme.accent)
     }
 }
@@ -490,12 +577,12 @@ private struct CompactMetricTile: View {
     let tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 4) {
             Image(systemName: symbol)
-                .font(.subheadline.weight(.black))
+                .font(.caption.weight(.black))
                 .foregroundStyle(tint)
             Text(value)
-                .font(.headline.weight(.black))
+                .font(.subheadline.weight(.black))
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .foregroundStyle(Theme.ink)
@@ -504,8 +591,8 @@ private struct CompactMetricTile: View {
                 .foregroundStyle(Theme.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .glassControlBackground(tint: tint, cornerRadius: 18)
+        .padding(8)
+        .glassControlBackground(tint: tint, cornerRadius: 14)
     }
 }
 
@@ -534,30 +621,30 @@ private struct ReminderPreviewCard: View {
     let settings: StudySettings
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(settings.notificationsEnabled ? Theme.accent.opacity(0.16) : Theme.glassBlue.opacity(0.12))
 
                 Image(systemName: settings.notificationsEnabled ? "bell.and.waves.left.and.right.fill" : "bell.slash.fill")
-                    .font(.headline.weight(.black))
+                    .font(.caption.weight(.black))
                     .foregroundStyle(settings.notificationsEnabled ? Theme.accent : Theme.glassBlue)
             }
-            .frame(width: 46, height: 46)
+            .frame(width: 38, height: 38)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(settings.notificationsEnabled ? "Reminder on" : "Reminder off")
-                    .font(.headline.weight(.black))
+                    .font(.subheadline.weight(.black))
                     .foregroundStyle(Theme.ink)
                 Text(settings.notificationsEnabled ? "Daily nudge at \(settings.reminderDate.formatted(.dateTime.hour().minute()))." : "No daily nudge.")
-                    .font(.caption.weight(.medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(13)
+        .padding(10)
         .glassControlBackground(tint: settings.notificationsEnabled ? Theme.accent : Theme.glassBlue)
     }
 }
@@ -587,27 +674,27 @@ private struct OnboardingStepRow: View {
     let bodyText: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 10) {
             Text(number)
-                .font(.caption.weight(.black))
+                .font(.caption2.weight(.black))
                 .monospacedDigit()
                 .foregroundStyle(Theme.accent)
-                .frame(width: 32, height: 32)
-                .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(width: 28, height: 28)
+                .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.subheadline.weight(.black))
+                    .font(.caption.weight(.black))
                     .foregroundStyle(Theme.ink)
                 Text(bodyText)
-                    .font(.caption.weight(.medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(10)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .padding(8)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }

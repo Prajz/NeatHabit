@@ -1552,13 +1552,13 @@ private struct GuideSetupCard: View {
                                     get: { Double(schedule.settings.dailyMinutes) },
                                     set: { store.updateDailyMinutes(Int($0)) }
                                 ),
-                                in: 80...240,
-                                step: 10
+                                in: 20...240,
+                                step: 5
                             )
                             .tint(Theme.accent)
 
                             HStack {
-                                Text("80m")
+                                Text("20m")
                                 Spacer()
                                 Text("240m")
                             }
@@ -1586,30 +1586,60 @@ private struct GuideSetupCard: View {
                                     get: { schedule.settings.systemDesignMinutes },
                                     set: { store.updateSystemDesignMinutes($0) }
                                 ),
-                                in: 10...60,
+                                in: 15...40,
                                 step: 5
                             )
                             .tint(Theme.accent)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Theme.muted)
+                        }
+                        .padding(14)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
-                            if schedule.settings.systemDesignMinutes > 20 {
-                                Text("Longer plans benefit from deeper design reps. Each topic gets more thorough coverage.")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(Theme.muted)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("LeetCode questions")
+                                    .font(.subheadline.weight(.black))
+                                    .foregroundStyle(Theme.ink)
+                                Spacer()
+                                Text("\(schedule.settings.problemBlockMinutes)m")
+                                    .font(.title3.weight(.black))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.accent)
                             }
+
+                            Stepper(
+                                "Coding duration",
+                                value: Binding(
+                                    get: { schedule.settings.problemBlockMinutes },
+                                    set: { store.updateProblemBlockMinutes($0) }
+                                ),
+                                in: 5...200,
+                                step: 5
+                            )
+                            .tint(Theme.accent)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.muted)
                         }
                         .padding(14)
                         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                         let effectiveSD = schedule.settings.systemDesignMinutes
-                        let codingTime = schedule.settings.dailyMinutes - effectiveSD
+                        let codingTime = schedule.settings.problemBlockMinutes
+                        let totalTime = effectiveSD + codingTime
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Budget: \(effectiveSD)m design + \(codingTime)m coding = ~\(perQuestionMinutes)m/question")
+                            Text("\(effectiveSD)m design + \(codingTime)m coding = \(totalTime)m total")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Theme.ink)
+                            Text("~\(perQuestionMinutes)m/question")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(perQuestionMinutes >= 20 ? Theme.green : Theme.red)
-                                .fixedSize(horizontal: false, vertical: true)
+                            if perQuestionMinutes < 20 {
+                                Text("Under 20 min/question is tight. Add time or push the finish date.")
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(Theme.red)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                         .padding(12)
                         .background((perQuestionMinutes >= 20 ? Theme.green : Theme.red).opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))

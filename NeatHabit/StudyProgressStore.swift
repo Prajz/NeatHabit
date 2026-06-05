@@ -19,7 +19,7 @@ final class StudyProgressStore: ObservableObject {
         self.onboardingDefaults = onboardingDefaults
 
         var normalizedProgress = progress
-        normalizedProgress.settings.dailyMinutes = min(max(normalizedProgress.settings.dailyMinutes, 80), maximumDailyMinutes)
+        normalizedProgress.settings.dailyMinutes = min(max(normalizedProgress.settings.dailyMinutes, 20), maximumDailyMinutes)
         self.progress = normalizedProgress
 
         if normalizedProgress != progress {
@@ -151,14 +151,27 @@ final class StudyProgressStore: ObservableObject {
 
     func updateDailyMinutes(_ minutes: Int) {
         var nextProgress = progress
-        nextProgress.settings.dailyMinutes = min(max(minutes, 80), maximumDailyMinutes)
+        let clamped = min(max(minutes, 20), maximumDailyMinutes)
+        nextProgress.settings.dailyMinutes = clamped
+        nextProgress.settings.problemBlockMinutes = max(5, clamped - nextProgress.settings.systemDesignMinutes)
         commit(nextProgress)
         Task { await scheduleAllRemindersIfNeeded() }
     }
 
     func updateSystemDesignMinutes(_ minutes: Int) {
         var nextProgress = progress
-        nextProgress.settings.systemDesignMinutes = min(max(minutes, 10), 60)
+        nextProgress.settings.systemDesignMinutes = min(max(minutes, 15), 40)
+        nextProgress.settings.dailyMinutes = min(max(nextProgress.settings.systemDesignMinutes + nextProgress.settings.problemBlockMinutes, 20), maximumDailyMinutes)
+        commit(nextProgress)
+        Task { await scheduleAllRemindersIfNeeded() }
+    }
+
+    func updateProblemBlockMinutes(_ minutes: Int) {
+        var nextProgress = progress
+        let clamped = min(max(minutes, 5), 200)
+        let capped = min(clamped, maximumDailyMinutes - nextProgress.settings.systemDesignMinutes)
+        nextProgress.settings.problemBlockMinutes = max(5, capped)
+        nextProgress.settings.dailyMinutes = nextProgress.settings.systemDesignMinutes + nextProgress.settings.problemBlockMinutes
         commit(nextProgress)
         Task { await scheduleAllRemindersIfNeeded() }
     }
