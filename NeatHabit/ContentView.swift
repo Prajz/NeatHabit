@@ -263,10 +263,10 @@ private struct HeroMetric: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(value)
-                .font(.headline.weight(.black))
-                .monospacedDigit()
-                .foregroundStyle(Theme.ink)
+                Text(value)
+                    .font(.headline.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.ink)
             Text(label)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.muted)
@@ -298,11 +298,11 @@ private struct DaySelector: View {
                     } label: {
                         VStack(spacing: 5) {
                             Text(day.date.map(shortDateText) ?? "Day")
-                                .font(.caption2.weight(.black))
+                                .font(.caption2.weight(.bold))
                                 .lineLimit(1)
 
                             Text("Day \(day.day)")
-                                .font(.caption.weight(.black))
+                                .font(.caption.weight(.bold))
                                 .monospacedDigit()
 
                             Circle()
@@ -390,7 +390,7 @@ private struct DailyFlowCard: View {
 
                     if understood {
                         Image(systemName: "checkmark.seal.fill")
-                            .font(.title.weight(.black))
+                            .font(.title.weight(.bold))
                             .foregroundStyle(Theme.accent)
                     }
                 }
@@ -401,7 +401,7 @@ private struct DailyFlowCard: View {
                             SystemDesignDetailView(topic: topic)
                         } label: {
                             Label("Read topic", systemImage: "book.pages.fill")
-                                .font(.subheadline.weight(.black))
+                                .font(.headline.weight(.bold))
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(SWSecondaryGlassButtonStyle(tint: Theme.accent))
@@ -413,7 +413,7 @@ private struct DailyFlowCard: View {
                             store.setSystemDesignChecksCompleted(false, day: day.day, allCheckIDs: allIDs)
                         } label: {
                             Label("Mark unread", systemImage: "arrow.uturn.backward")
-                                .font(.subheadline.weight(.black))
+                                .font(.headline.weight(.bold))
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(SWSecondaryGlassButtonStyle(tint: Theme.glassBlue))
@@ -423,7 +423,7 @@ private struct DailyFlowCard: View {
                             store.setSystemDesignChecksCompleted(true, day: day.day, allCheckIDs: allIDs)
                         } label: {
                             Label("Done?", systemImage: "checkmark")
-                                .font(.subheadline.weight(.black))
+                                .font(.headline.weight(.bold))
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(SWPrimaryGlassButtonStyle(tint: Theme.accent))
@@ -475,7 +475,7 @@ private struct HabitRow: View {
                         .fill(habit.tint.opacity(completed ? 0.22 : 0.12))
 
                     Image(systemName: completed ? "checkmark" : habit.systemImage)
-                        .font(.headline.weight(.black))
+                        .font(.headline.weight(.bold))
                         .foregroundStyle(completed ? Theme.accent : habit.tint)
                 }
                 .frame(width: 42, height: 42)
@@ -487,7 +487,7 @@ private struct HabitRow: View {
                             .foregroundStyle(Theme.ink)
 
                         Text("\(habit.durationMinutes(settings: settings))m")
-                            .font(.caption2.weight(.black))
+                            .font(.caption2.weight(.bold))
                             .monospacedDigit()
                             .foregroundStyle(habit.tint)
                             .padding(.horizontal, 8)
@@ -602,7 +602,7 @@ private struct ProblemCountPill: View {
 
     var body: some View {
         Text("\(done)/\(total)")
-            .font(.caption.weight(.black))
+            .font(.caption.weight(.bold))
             .monospacedDigit()
             .foregroundStyle(Theme.accent)
             .padding(.horizontal, 11)
@@ -620,7 +620,7 @@ private struct CompletionBadge: View {
             Image(systemName: "checkmark.circle.fill")
             Text(title)
         }
-        .font(.caption.weight(.black))
+        .font(.caption.weight(.bold))
         .foregroundStyle(color)
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
@@ -648,10 +648,10 @@ private struct CountBadge: View {
     var body: some View {
         VStack(spacing: 1) {
             Text("\(count)")
-                .font(.caption.weight(.black))
+                .font(.caption.weight(.bold))
                 .monospacedDigit()
             Text(label)
-                .font(.caption2.weight(.heavy))
+                .font(.caption2.weight(.bold))
         }
         .foregroundStyle(color)
         .frame(width: 30, height: 34)
@@ -674,7 +674,7 @@ private struct ProblemRow: View {
                     Circle()
                         .fill(status.tint.opacity(0.14))
                     Image(systemName: status.symbol)
-                        .font(.caption.weight(.black))
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(status.tint)
                 }
                 .frame(width: 32, height: 32)
@@ -712,7 +712,7 @@ private struct ProblemRow: View {
                         }
                         Text(statusChipText)
                     }
-                    .font(.caption.weight(.black))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(status.tint)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
@@ -828,7 +828,7 @@ private struct RedoScheduleSheet: View {
                             Text(shortDateText(suggestedDate))
                                 .monospacedDigit()
                         }
-                        .font(.subheadline.weight(.black))
+                        .font(.subheadline.weight(.bold))
                         .foregroundStyle(Theme.red)
                     }
                     .buttonStyle(.plain)
@@ -900,8 +900,8 @@ private struct RedoSheetButton: View {
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: symbol)
-                .font(.subheadline.weight(.black))
+                Label(title, systemImage: symbol)
+                    .font(.subheadline.weight(.bold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .foregroundStyle(filled ? .white : tint)
@@ -941,7 +941,7 @@ private struct RedoQueueCard: View {
                             } label: {
                                 HStack(spacing: 12) {
                                     Text(candidate.reason.title)
-                                        .font(.caption.weight(.black))
+                                        .font(.caption.weight(.bold))
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 9)
                                         .padding(.vertical, 6)
@@ -959,7 +959,7 @@ private struct RedoQueueCard: View {
                                     Spacer()
 
                                     Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.bold))
+                                        .font(.caption.weight(.semibold))
                                         .foregroundStyle(Theme.muted)
                                 }
                                 .padding(12)
@@ -994,7 +994,7 @@ private struct NotesCard: View {
                         Button("Hide keyboard") {
                             notesFocused = false
                         }
-                        .font(.caption.weight(.black))
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Theme.accent)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
@@ -1019,7 +1019,7 @@ private struct NotesCard: View {
                         Button("Done") {
                             notesFocused = false
                         }
-                        .font(.headline.weight(.bold))
+                        .font(.headline.weight(.semibold))
                     }
                 }
             }
@@ -1090,7 +1090,7 @@ private struct RoadmapSectionBlock: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(section.title)
-                        .font(.headline.weight(.black))
+                        .font(.headline.weight(.bold))
                         .foregroundStyle(Theme.ink)
                     Text(section.template)
                         .font(.caption.weight(.medium))
@@ -1100,8 +1100,8 @@ private struct RoadmapSectionBlock: View {
 
                 Spacer(minLength: 12)
 
-                Text("\(completedCount)/\(section.problems.count)")
-                    .font(.caption.weight(.black))
+                    Text("\(completedCount)/\(section.problems.count)")
+                        .font(.caption.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(Theme.accent)
                     .padding(.horizontal, 9)
@@ -1147,7 +1147,7 @@ private struct RoadmapProblemChecklistRow: View {
 
                 if isChecked {
                     Text(status.shortTitle)
-                        .font(.caption.weight(.black))
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(status.tint)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 6)
@@ -1226,7 +1226,7 @@ private struct TargetBar: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(title)
-                    .font(.subheadline.weight(.black))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Spacer()
                 Text("\(value) / \(rule) \(target)")
@@ -1316,7 +1316,7 @@ private struct StatusLegendCard: View {
                             .frame(width: 12, height: 12)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(status.title)
-                                .font(.subheadline.weight(.black))
+                                .font(.subheadline.weight(.bold))
                                 .foregroundStyle(Theme.ink)
                             Text(status.description)
                                 .font(.caption.weight(.medium))
@@ -1362,7 +1362,7 @@ private struct UpcomingCard: View {
                                     Text(day.date.map(shortDateText) ?? "Day")
                                     Text("Day \(day.day)")
                                 }
-                                    .font(.caption2.weight(.black))
+                                    .font(.caption2.weight(.bold))
                                     .monospacedDigit()
                                     .foregroundStyle(Theme.accent)
                                     .padding(.horizontal, 10)
@@ -1380,7 +1380,7 @@ private struct UpcomingCard: View {
 
                                 Spacer()
                                 Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.bold))
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(Theme.muted)
                             }
                             .padding(12)
@@ -1472,7 +1472,7 @@ private struct GuideSetupCard: View {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
                             Text("Target finish date")
-                                .font(.headline.weight(.black))
+                                .font(.headline.weight(.bold))
                                 .foregroundStyle(Theme.ink)
                             Spacer()
                             Button("Done") {
@@ -1480,7 +1480,7 @@ private struct GuideSetupCard: View {
                                     showDateEditor = false
                                 }
                             }
-                            .font(.subheadline.weight(.black))
+                            .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.accent)
                         }
 
@@ -1522,7 +1522,7 @@ private struct GuideSetupCard: View {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
                             Text("Daily time budget")
-                                .font(.headline.weight(.black))
+                                .font(.headline.weight(.bold))
                                 .foregroundStyle(Theme.ink)
                             Spacer()
                             Button("Done") {
@@ -1530,7 +1530,7 @@ private struct GuideSetupCard: View {
                                     showTimeEditor = false
                                 }
                             }
-                            .font(.subheadline.weight(.black))
+                            .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.accent)
                         }
 
@@ -1571,7 +1571,7 @@ private struct GuideSetupCard: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text("System design")
-                                    .font(.subheadline.weight(.black))
+                                    .font(.subheadline.weight(.bold))
                                     .foregroundStyle(Theme.ink)
                                 Spacer()
                                 Text("\(schedule.settings.systemDesignMinutes)m")
@@ -1599,7 +1599,7 @@ private struct GuideSetupCard: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text("LeetCode questions")
-                                    .font(.subheadline.weight(.black))
+                                    .font(.subheadline.weight(.bold))
                                     .foregroundStyle(Theme.ink)
                                 Spacer()
                                 Text("\(schedule.settings.problemBlockMinutes)m")
@@ -1652,7 +1652,7 @@ private struct GuideSetupCard: View {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
                             Text("Daily reminder")
-                                .font(.headline.weight(.black))
+                                .font(.headline.weight(.bold))
                                 .foregroundStyle(Theme.ink)
                             Spacer()
                             Button("Done") {
@@ -1660,7 +1660,7 @@ private struct GuideSetupCard: View {
                                     showReminderEditor = false
                                 }
                             }
-                            .font(.subheadline.weight(.black))
+                            .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.accent)
                         }
 
@@ -1802,10 +1802,10 @@ private struct SystemDesignTopicsCard: View {
                                         SystemDesignDetailView(topic: topic)
                                     } label: {
                                         HStack(spacing: 10) {
-                                            Image(systemName: topic.icon)
-                                                .font(.caption.weight(.black))
-                                                .foregroundStyle(Theme.accent)
-                                                .frame(width: 30, height: 30)
+                                        Image(systemName: topic.icon)
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(Theme.accent)
+                                            .frame(width: 30, height: 30)
                                                 .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                                             VStack(alignment: .leading, spacing: 1) {
@@ -1833,13 +1833,13 @@ private struct SystemDesignTopicsCard: View {
                         } label: {
                             HStack {
                                 Text(category)
-                                    .font(.headline.weight(.black))
+                                    .font(.headline.weight(.bold))
                                     .foregroundStyle(Theme.ink)
 
                                 Spacer()
 
                                 Text("\(SystemDesignTopics.all.filter { $0.category == category }.count)")
-                                    .font(.caption.weight(.black))
+                                    .font(.caption.weight(.bold))
                                     .monospacedDigit()
                                     .foregroundStyle(Theme.accent)
                                     .padding(.horizontal, 8)
@@ -1870,7 +1870,7 @@ private struct GuideRuleRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.subheadline.weight(.black))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Text(bodyText)
                     .font(.caption.weight(.medium))
@@ -1943,7 +1943,7 @@ private struct ExtraPracticeCard: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Optional extras")
-                            .font(.title3.weight(.black))
+                            .font(.title3.weight(.bold))
                             .foregroundStyle(Theme.ink)
                         Text("\(store.progress.settings.extraProblems.count) added")
                             .font(.caption.weight(.bold))
@@ -1972,7 +1972,7 @@ private struct EmptyStateRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.subheadline.weight(.black))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Text(subtitle)
                     .font(.caption.weight(.medium))

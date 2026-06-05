@@ -121,7 +121,7 @@ struct OnboardingView: View {
                                         .contentTransition(.numericText())
                                         .foregroundStyle(Theme.ink)
                                     Text("min system design")
-                                        .font(.caption.weight(.black))
+                                        .font(.caption.weight(.bold))
                                         .foregroundStyle(Theme.muted)
                                     Spacer(minLength: 0)
                                 }
@@ -155,7 +155,7 @@ struct OnboardingView: View {
                                         .contentTransition(.numericText())
                                         .foregroundStyle(Theme.ink)
                                     Text("min LeetCode")
-                                        .font(.caption.weight(.black))
+                                        .font(.caption.weight(.bold))
                                         .foregroundStyle(Theme.muted)
                                     Spacer(minLength: 0)
                                 }
@@ -182,11 +182,11 @@ struct OnboardingView: View {
                             .glassControlBackground(tint: Theme.accent)
 
                             HStack {
-                                Text("\(settings.systemDesignMinutes)m + \(codingMinutes)m")
-                                    .font(.caption.weight(.black))
-                                    .foregroundStyle(Theme.muted)
-                                Text("= \(totalMinutes)m total")
-                                    .font(.subheadline.weight(.black))
+                            Text("\(settings.systemDesignMinutes)m + \(codingMinutes)m")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Theme.muted)
+                            Text("= \(totalMinutes)m total")
+                                .font(.subheadline.weight(.bold))
                                     .foregroundStyle(Theme.ink)
                                     .monospacedDigit()
                                     .contentTransition(.numericText())
@@ -282,7 +282,7 @@ struct OnboardingView: View {
                             }
                         } label: {
                             Label("Back", systemImage: "chevron.left")
-                                .font(.headline.weight(.black))
+                                .font(.headline.weight(.bold))
                         }
                         .buttonStyle(SWSecondaryGlassButtonStyle(tint: Theme.glassBlue))
                     }
@@ -307,7 +307,7 @@ struct OnboardingView: View {
                         }
                     } label: {
                         Label(ctaTitle, systemImage: ctaSymbol)
-                            .font(.headline.weight(.black))
+                            .font(.headline.weight(.bold))
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(SWPrimaryGlassButtonStyle(tint: canStart ? Theme.accent : Theme.red))
@@ -456,11 +456,11 @@ private struct TargetImpactCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .font(.subheadline.weight(.black))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Spacer(minLength: 8)
                 Text(isComfortable ? "Balanced" : "Tight")
-                    .font(.caption2.weight(.black))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(isComfortable ? Theme.green : Theme.red)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -495,11 +495,11 @@ private struct TimeImpactCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .font(.subheadline.weight(.black))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Spacer(minLength: 8)
                 Text(isComfortable ? "Enough" : "Tight")
-                    .font(.caption2.weight(.black))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(isComfortable ? Theme.green : Theme.red)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -537,12 +537,12 @@ private struct TimeBudgetBreakdown: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Label("Daily budget", systemImage: "chart.bar.fill")
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(Theme.ink)
-                Spacer()
-                Text("\(schedule.settings.dailyMinutes)m")
-                    .font(.caption.weight(.black))
+                    Label("Daily budget", systemImage: "chart.bar.fill")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text("\(schedule.settings.dailyMinutes)m")
+                        .font(.caption.weight(.bold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .foregroundStyle(Theme.accent)
@@ -579,15 +579,15 @@ private struct CompactMetricTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Image(systemName: symbol)
-                .font(.caption.weight(.black))
+                .font(.caption.weight(.bold))
                 .foregroundStyle(tint)
             Text(value)
-                .font(.subheadline.weight(.black))
+                .font(.subheadline.weight(.bold))
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .foregroundStyle(Theme.ink)
             Text(title)
-                .font(.caption2.weight(.bold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(Theme.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -611,7 +611,7 @@ private struct BudgetLegendDot: View {
                 .monospacedDigit()
                 .foregroundStyle(Theme.ink)
         }
-        .font(.caption.weight(.bold))
+        .font(.caption.weight(.semibold))
         .foregroundStyle(Theme.muted)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -627,14 +627,14 @@ private struct ReminderPreviewCard: View {
                     .fill(settings.notificationsEnabled ? Theme.accent.opacity(0.16) : Theme.glassBlue.opacity(0.12))
 
                 Image(systemName: settings.notificationsEnabled ? "bell.and.waves.left.and.right.fill" : "bell.slash.fill")
-                    .font(.caption.weight(.black))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(settings.notificationsEnabled ? Theme.accent : Theme.glassBlue)
             }
             .frame(width: 38, height: 38)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(settings.notificationsEnabled ? "Reminder on" : "Reminder off")
-                    .font(.subheadline.weight(.black))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Text(settings.notificationsEnabled ? "Daily nudge at \(settings.reminderDate.formatted(.dateTime.hour().minute()))." : "No daily nudge.")
                     .font(.caption2.weight(.medium))
@@ -676,7 +676,7 @@ private struct OnboardingStepRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Text(number)
-                .font(.caption2.weight(.black))
+                .font(.caption2.weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(Theme.accent)
                 .frame(width: 28, height: 28)
@@ -684,7 +684,7 @@ private struct OnboardingStepRow: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.caption.weight(.black))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Text(bodyText)
                     .font(.caption2.weight(.medium))

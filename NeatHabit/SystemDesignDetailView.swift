@@ -27,7 +27,7 @@ struct SystemDesignDetailView: View {
                         showCopiedAlert = true
                     } label: {
                         Label("Ask AI", systemImage: "brain.head.profile")
-                            .font(.subheadline.weight(.black))
+                            .font(.headline.weight(.bold))
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(SWSecondaryGlassButtonStyle(tint: Theme.glassBlue))
@@ -103,14 +103,14 @@ private struct TopicHeroSection: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 14) {
                     Image(systemName: topic.icon)
-                        .font(.title.weight(.black))
+                        .font(.title.weight(.bold))
                         .foregroundStyle(tintForCategory(topic.category))
                         .frame(width: 52, height: 52)
                         .background(tintForCategory(topic.category).opacity(0.13), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(topic.category.uppercased())
-                            .font(.caption2.weight(.black))
+                            .font(.caption2.weight(.bold))
                             .tracking(1.2)
                             .foregroundStyle(tintForCategory(topic.category))
 
@@ -201,14 +201,14 @@ private struct ArchitectureStackView: View {
             ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
                 HStack(spacing: 12) {
                     Image(systemName: node.icon)
-                        .font(.headline.weight(.black))
+                        .font(.headline.weight(.bold))
                         .foregroundStyle(colorForRole(node.role))
                         .frame(width: 36, height: 36)
                         .background(colorForRole(node.role).opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(node.title)
-                            .font(.subheadline.weight(.black))
+                            .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.ink)
                         Text(node.subtitle)
                             .font(.caption.weight(.medium))
@@ -226,7 +226,7 @@ private struct ArchitectureStackView: View {
 
                 if index < nodes.count - 1 {
                     Image(systemName: "arrow.down")
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.muted.opacity(0.5))
                         .padding(.vertical, 2)
                 }
@@ -245,14 +245,14 @@ private struct ComparisonDiagramView: View {
             ForEach(nodes) { node in
                 HStack(spacing: 12) {
                     Image(systemName: node.icon)
-                        .font(.headline.weight(.black))
+                        .font(.headline.weight(.bold))
                         .foregroundStyle(colorForRole(node.role))
                         .frame(width: 40, height: 40)
                         .background(colorForRole(node.role).opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(node.title)
-                            .font(.subheadline.weight(.black))
+                            .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.ink)
                         Text(node.subtitle)
                             .font(.caption.weight(.medium))
@@ -281,14 +281,14 @@ private struct DiagramNodeView: View {
                     .fill(colorForRole(node.role).opacity(0.12))
 
                 Image(systemName: node.icon)
-                    .font(.headline.weight(.black))
+                    .font(.headline.weight(.bold))
                     .foregroundStyle(colorForRole(node.role))
             }
             .frame(width: 44, height: 44)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(node.title)
-                    .font(.subheadline.weight(.black))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Text(node.subtitle)
                     .font(.caption.weight(.medium))
@@ -364,7 +364,7 @@ private struct ConceptCard: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(concept.title)
-                            .font(.subheadline.weight(.black))
+                            .font(.subheadline.weight(.bold))
                             .foregroundStyle(Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -411,7 +411,7 @@ private struct TalkingPointsSection: View {
                     ForEach(Array(points.enumerated()), id: \.offset) { index, point in
                         HStack(alignment: .top, spacing: 12) {
                             Text("\(index + 1)")
-                                .font(.caption.weight(.black))
+                                .font(.caption.weight(.bold))
                                 .monospacedDigit()
                                 .foregroundStyle(Theme.green)
                                 .frame(width: 28, height: 28)
@@ -448,7 +448,7 @@ private struct TradeoffsSection: View {
                     ForEach(tradeoffs, id: \.self) { tradeoff in
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: "arrow.left.arrow.right")
-                                .font(.caption.weight(.black))
+                                .font(.caption.weight(.bold))
                                 .foregroundStyle(Theme.amber)
                                 .frame(width: 28, height: 28)
                                 .background(Theme.amber.opacity(0.12), in: Circle())

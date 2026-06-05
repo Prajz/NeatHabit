@@ -145,7 +145,7 @@ struct SectionHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.title3.weight(.black))
+                .font(.title3.weight(.bold))
                 .foregroundStyle(Theme.ink)
             Text(subtitle)
                 .font(.subheadline.weight(.medium))
@@ -164,7 +164,7 @@ struct MetricTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Image(systemName: symbol)
-                .font(.headline.weight(.black))
+                .font(.headline.weight(.bold))
                 .foregroundStyle(tint)
             Text(value)
                 .font(.title3.weight(.black))
@@ -198,7 +198,7 @@ struct ProgressRing: View {
                     .font(.title3.weight(.black))
                     .monospacedDigit()
                 Text("done")
-                    .font(.caption2.weight(.bold))
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(Theme.muted)
             }
         }
@@ -342,7 +342,7 @@ enum Haptics {
 extension Text {
     func eyebrow(color: Color = Theme.accent) -> some View {
         self
-            .font(.caption.weight(.black))
+            .font(.caption.weight(.bold))
             .tracking(1.1)
             .foregroundStyle(color)
             .textCase(.uppercase)
