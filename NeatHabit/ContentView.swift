@@ -166,6 +166,7 @@ private struct GuideTab: View {
             VStack(spacing: 18) {
                 GuideHeaderCard()
                 GuideSetupCard(schedule: store.schedule)
+                SystemDesignTopicsCard()
                 ExtraPracticeCard()
                 GuideRulesCard()
             }
@@ -352,7 +353,7 @@ private struct DailyFlowCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(
                     title: "System design",
-                    subtitle: "Spend 20 minutes on the daily design question before or after coding."
+                    subtitle: "Tap the topic to explore architecture, concepts, and interview tips."
                 )
 
                 VStack(spacing: 11) {
@@ -426,11 +427,35 @@ private struct SystemDesignFocusRow: View {
                 .foregroundStyle(Theme.accent)
             }
 
-            Text(focus)
-                .font(.title3.weight(.black))
-                .tracking(-0.35)
-                .foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            if let topic = SystemDesignTopics.topic(for: focus) {
+                NavigationLink {
+                    SystemDesignDetailView(topic: topic)
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(focus)
+                            .font(.title3.weight(.black))
+                            .tracking(-0.35)
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Spacer(minLength: 4)
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.muted.opacity(0.6))
+                    }
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 8)
+                    .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text(focus)
+                    .font(.title3.weight(.black))
+                    .tracking(-0.35)
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             VStack(spacing: 8) {
                 ForEach(systemDesignChecklist) { item in
@@ -1524,8 +1549,96 @@ private struct GuideRulesCard: View {
                 GuideRuleRow(
                     symbol: "server.rack",
                     title: "System design",
-                    bodyText: "Budget 20 minutes for one design question: scope, API/data, flow, bottleneck, tradeoff."
+                    bodyText: "Budget 20 minutes for one design question: scope, API/data, flow, bottleneck, tradeoff. Tap the topic on the Today tab for a deep dive."
                 )
+            }
+        }
+    }
+}
+
+private struct SystemDesignTopicsCard: View {
+    @State private var selectedCategory: String?
+
+    private var categories: [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for topic in SystemDesignTopics.all where !seen.contains(topic.category) {
+            seen.insert(topic.category)
+            result.append(topic.category)
+        }
+        return result
+    }
+
+    var body: some View {
+        LiquidGlassCard(tint: Theme.accent) {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader(
+                    title: "System design topics",
+                    subtitle: "31 topics covering fundamentals, scale, reliability, and classic interview problems. Tap any topic for a deep dive."
+                )
+
+                VStack(spacing: 12) {
+                    ForEach(categories, id: \.self) { category in
+                        DisclosureGroup(
+                            isExpanded: Binding(
+                                get: { selectedCategory == category },
+                                set: { selectedCategory = $0 ? category : nil }
+                            )
+                        ) {
+                            VStack(spacing: 8) {
+                                ForEach(SystemDesignTopics.all.filter { $0.category == category }) { topic in
+                                    NavigationLink {
+                                        SystemDesignDetailView(topic: topic)
+                                    } label: {
+                                        HStack(spacing: 10) {
+                                            Image(systemName: topic.icon)
+                                                .font(.caption.weight(.black))
+                                                .foregroundStyle(Theme.accent)
+                                                .frame(width: 30, height: 30)
+                                                .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                                            VStack(alignment: .leading, spacing: 1) {
+                                                Text(topic.title)
+                                                    .font(.subheadline.weight(.bold))
+                                                    .foregroundStyle(Theme.ink)
+                                                Text(topic.concepts.count > 0 ? "\(topic.concepts.count) concepts" : "")
+                                                    .font(.caption2.weight(.medium))
+                                                    .foregroundStyle(Theme.muted)
+                                            }
+
+                                            Spacer(minLength: 0)
+
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundStyle(Theme.muted.opacity(0.5))
+                                        }
+                                        .padding(10)
+                                        .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.top, 8)
+                        } label: {
+                            HStack {
+                                Text(category)
+                                    .font(.headline.weight(.black))
+                                    .foregroundStyle(Theme.ink)
+
+                                Spacer()
+
+                                Text("\(SystemDesignTopics.all.filter { $0.category == category }.count)")
+                                    .font(.caption.weight(.black))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.accent)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .background(Theme.accent.opacity(0.10), in: Capsule())
+                            }
+                        }
+                        .tint(Theme.accent)
+                    }
+                }
             }
         }
     }

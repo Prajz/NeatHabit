@@ -20,6 +20,8 @@
 		200000000000000000000009 /* NeatHabitWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000007 /* NeatHabitWidget.swift */; };
 		200000000000000000000010 /* NeatHabitWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 100000000000000000000012 /* NeatHabitWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		200000000000000000000011 /* WidgetActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000014 /* WidgetActions.swift */; };
+		200000000000000000000014 /* SystemDesignTopic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000017 /* SystemDesignTopic.swift */; };
+		200000000000000000000015 /* SystemDesignDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000018 /* SystemDesignDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +65,8 @@
 		100000000000000000000012 /* NeatHabitWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NeatHabitWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		100000000000000000000013 /* NeatHabit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NeatHabit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		100000000000000000000014 /* WidgetActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetActions.swift; sourceTree = "<group>"; };
+		100000000000000000000017 /* SystemDesignTopic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemDesignTopic.swift; sourceTree = "<group>"; };
+		100000000000000000000018 /* SystemDesignDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemDesignDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +114,8 @@
 				100000000000000000000016 /* OnboardingView.swift */,
 				100000000000000000000002 /* ContentView.swift */,
 				100000000000000000000003 /* StudyProgressStore.swift */,
+				100000000000000000000017 /* SystemDesignTopic.swift */,
+				100000000000000000000018 /* SystemDesignDetailView.swift */,
 				100000000000000000000006 /* Assets.xcassets */,
 				100000000000000000000008 /* Info.plist */,
 				100000000000000000000009 /* NeatHabit.entitlements */,
@@ -243,6 +249,8 @@
 				200000000000000000000003 /* StudyProgressStore.swift in Sources */,
 				200000000000000000000004 /* StudyPlan.swift in Sources */,
 				200000000000000000000005 /* StudyProgress.swift in Sources */,
+				200000000000000000000014 /* SystemDesignTopic.swift in Sources */,
+				200000000000000000000015 /* SystemDesignDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
