@@ -57,7 +57,7 @@ enum StudyHabit: String, CaseIterable, Codable, Hashable, Identifiable {
         case .review:
             return "Only appears when redo work is due."
         case .systemDesign:
-            return "Spend focused time on the daily design topic."
+            return "Spend 20 minutes structuring the daily system design question."
         }
     }
 
@@ -215,7 +215,7 @@ struct StudySettings: Codable, Equatable {
     }
 
     var estimatedProblemCapacity: Int {
-        max(1, problemBlockMinutes / 25)
+        max(1, problemBlockMinutes / 20)
     }
 
     var reminderDate: Date {

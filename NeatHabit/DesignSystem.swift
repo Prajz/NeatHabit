@@ -27,18 +27,18 @@ enum AppFont {
 }
 
 enum Theme {
-    static let ink = dynamic(light: (0.070, 0.080, 0.105), dark: (0.90, 0.92, 0.96))
-    static let muted = dynamic(light: (0.36, 0.39, 0.46), dark: (0.64, 0.68, 0.76))
-    static let canvas = dynamic(light: (0.955, 0.965, 0.98), dark: (0.050, 0.056, 0.070))
-    static let surface = dynamic(light: (0.985, 0.99, 1.0), dark: (0.095, 0.105, 0.13)).opacity(0.88)
-    static let cardFill = dynamic(light: (0.992, 0.995, 1.0), dark: (0.070, 0.078, 0.098))
-    static let hairline = dynamic(light: (0.82, 0.86, 0.92), dark: (0.20, 0.23, 0.29))
-    static let cardShadow = dynamic(light: (0.08, 0.11, 0.18), dark: (0.0, 0.0, 0.0))
-    static let accent = Color(red: 0.16, green: 0.38, blue: 0.86)
-    static let glassBlue = Color(red: 0.38, green: 0.43, blue: 0.56)
-    static let green = Color(red: 0.20, green: 0.58, blue: 0.34)
-    static let amber = Color(red: 0.78, green: 0.49, blue: 0.16)
-    static let red = Color(red: 0.72, green: 0.25, blue: 0.24)
+    static let ink = dynamic(light: (0.070, 0.080, 0.105), dark: (0.82, 0.87, 0.94))
+    static let muted = dynamic(light: (0.36, 0.39, 0.46), dark: (0.55, 0.61, 0.70))
+    static let canvas = dynamic(light: (0.955, 0.965, 0.98), dark: (0.075, 0.086, 0.105))
+    static let surface = dynamic(light: (0.985, 0.99, 1.0), dark: (0.125, 0.140, 0.165)).opacity(0.90)
+    static let cardFill = dynamic(light: (0.992, 0.995, 1.0), dark: (0.105, 0.120, 0.145))
+    static let hairline = dynamic(light: (0.82, 0.86, 0.92), dark: (0.245, 0.285, 0.34))
+    static let cardShadow = dynamic(light: (0.08, 0.11, 0.18), dark: (0.015, 0.025, 0.040))
+    static let accent = dynamic(light: (0.16, 0.38, 0.86), dark: (0.48, 0.66, 0.92))
+    static let glassBlue = dynamic(light: (0.38, 0.43, 0.56), dark: (0.54, 0.62, 0.73))
+    static let green = dynamic(light: (0.20, 0.58, 0.34), dark: (0.45, 0.72, 0.55))
+    static let amber = dynamic(light: (0.78, 0.49, 0.16), dark: (0.86, 0.65, 0.34))
+    static let red = dynamic(light: (0.72, 0.25, 0.24), dark: (0.90, 0.48, 0.46))
 
     private static func dynamic(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
         Color(uiColor: UIColor { traits in
@@ -49,25 +49,34 @@ enum Theme {
 }
 
 struct AppBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
             Theme.canvas
 
             LinearGradient(
                 colors: [
-                    .white.opacity(0.26),
+                    .white.opacity(colorScheme == .dark ? 0.055 : 0.26),
                     .clear,
-                    Theme.accent.opacity(0.06)
+                    Theme.accent.opacity(colorScheme == .dark ? 0.045 : 0.06)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
             RadialGradient(
-                colors: [Theme.accent.opacity(0.16), .clear],
+                colors: [Theme.accent.opacity(colorScheme == .dark ? 0.10 : 0.16), .clear],
                 center: .topTrailing,
                 startRadius: 20,
                 endRadius: 360
+            )
+
+            RadialGradient(
+                colors: [Theme.glassBlue.opacity(colorScheme == .dark ? 0.09 : 0.035), .clear],
+                center: .bottomLeading,
+                startRadius: 30,
+                endRadius: 420
             )
         }
         .ignoresSafeArea()
@@ -75,6 +84,8 @@ struct AppBackground: View {
 }
 
 struct LiquidGlassCard<Content: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let tint: Color
     let content: Content
 
@@ -89,12 +100,12 @@ struct LiquidGlassCard<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(Theme.cardFill.opacity(0.92))
+                    .fill(Theme.cardFill.opacity(colorScheme == .dark ? 0.84 : 0.92))
                     .overlay {
                         LinearGradient(
                             colors: [
-                                .white.opacity(0.18),
-                                tint.opacity(0.08),
+                                .white.opacity(colorScheme == .dark ? 0.07 : 0.18),
+                                tint.opacity(colorScheme == .dark ? 0.045 : 0.08),
                                 .clear
                             ],
                             startPoint: .topLeading,
@@ -105,13 +116,13 @@ struct LiquidGlassCard<Content: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
             .overlay(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .strokeBorder(.white.opacity(0.24), lineWidth: 0.7)
+                    .strokeBorder(.white.opacity(colorScheme == .dark ? 0.10 : 0.24), lineWidth: 0.7)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .strokeBorder(tint.opacity(0.20), lineWidth: 1)
+                    .strokeBorder(tint.opacity(colorScheme == .dark ? 0.14 : 0.20), lineWidth: 1)
             }
-            .shadow(color: Theme.cardShadow.opacity(0.13), radius: 22, x: 0, y: 14)
+            .shadow(color: Theme.cardShadow.opacity(colorScheme == .dark ? 0.34 : 0.13), radius: 22, x: 0, y: 14)
     }
 }
 
@@ -220,6 +231,46 @@ struct SWShimmer<Content: View>: View {
     }
 }
 
+struct SWShimmerSweep: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var animate = false
+
+    var duration: Double = 1.15
+    var delay: Double = 0.9
+    var cornerRadius: CGFloat = 22
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                GeometryReader { geometry in
+                    let bandWidth = max(56, geometry.size.width * 0.30)
+
+                    LinearGradient(
+                        colors: [
+                            .clear,
+                            .white.opacity(colorScheme == .dark ? 0.50 : 0.62),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: bandWidth, height: geometry.size.height * 1.8)
+                    .blur(radius: 0.4)
+                    .blendMode(.plusLighter)
+                    .rotationEffect(.degrees(12))
+                    .offset(x: animate ? geometry.size.width + bandWidth : -bandWidth * 1.8, y: -geometry.size.height * 0.35)
+                    .animation(.linear(duration: duration).delay(delay).repeatForever(autoreverses: false), value: animate)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .allowsHitTesting(false)
+            }
+            .task {
+                try? await Task.sleep(nanoseconds: 180_000_000)
+                animate = true
+            }
+    }
+}
+
 struct SWPrimaryGlassButtonStyle: ButtonStyle {
     let tint: Color
 
@@ -288,20 +339,35 @@ extension Text {
 
 extension View {
     func glassControlBackground(tint: Color = Theme.accent, cornerRadius: CGFloat = 20) -> some View {
-        self
+        modifier(GlassControlBackground(tint: tint, cornerRadius: cornerRadius))
+    }
+
+    func shimmerSweep(duration: Double = 1.15, delay: Double = 1.5, cornerRadius: CGFloat = 22) -> some View {
+        modifier(SWShimmerSweep(duration: duration, delay: delay, cornerRadius: cornerRadius))
+    }
+}
+
+private struct GlassControlBackground: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let tint: Color
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(Theme.surface)
-                    .overlay(tint.opacity(0.07))
+                    .overlay(tint.opacity(colorScheme == .dark ? 0.045 : 0.07))
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(.white.opacity(0.26), lineWidth: 0.8)
+                    .strokeBorder(.white.opacity(colorScheme == .dark ? 0.10 : 0.26), lineWidth: 0.8)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(tint.opacity(0.18), lineWidth: 1)
+                    .strokeBorder(tint.opacity(colorScheme == .dark ? 0.13 : 0.18), lineWidth: 1)
             }
     }
 }

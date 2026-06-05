@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     private let maxDailyMinutes = 240
+    private let comfortablePerQuestionMinutes = 20
 
     @EnvironmentObject private var store: StudyProgressStore
     @State private var appeared = false
@@ -17,12 +18,12 @@ struct OnboardingView: View {
     private var problemMinutesText: String {
         guard schedule.averageProblemsPerDay > 0 else { return "Enough time for today's plan." }
         let minutes = Int(perQuestionMinutes.rounded())
-        return "\(dailyMinutes)m/day - 20m design = \(settings.problemBlockMinutes)m questions. About \(minutes)m/question."
+        return "\(dailyMinutes)m/day includes 20m system design. \(settings.problemBlockMinutes)m remains for coding: about \(minutes)m/question."
     }
 
     private var canStart: Bool {
         guard schedule.averageProblemsPerDay > 0 else { return true }
-        return perQuestionMinutes >= 15
+        return perQuestionMinutes >= Double(comfortablePerQuestionMinutes)
     }
 
     private var ctaTitle: String {
@@ -51,7 +52,7 @@ struct OnboardingView: View {
                         eyebrow: "Setup",
                         symbol: "sparkles.rectangle.stack.fill",
                         title: "Build your daily plan.",
-                        subtitle: "NeetCode 150 plus one design rep each day."
+                        subtitle: "NeetCode 150 plus a 20-minute system design rep each day."
                     ) {
                         VStack(spacing: 10) {
                             HStack(spacing: 10) {
@@ -60,7 +61,7 @@ struct OnboardingView: View {
                             }
 
                             OnboardingStepRow(number: "01", title: "Finish date", bodyText: "Sets questions/day.")
-                            OnboardingStepRow(number: "02", title: "Daily time", bodyText: "20m design. Rest is question time.")
+                            OnboardingStepRow(number: "02", title: "Daily time", bodyText: "20m system design. Rest is coding time.")
                             OnboardingStepRow(number: "03", title: "Reminder", bodyText: "A nudge, not plan math.")
                         }
                     }
@@ -231,13 +232,12 @@ struct OnboardingView: View {
                             }
                         }
                     } label: {
-                        SWShimmer {
-                            Label(ctaTitle, systemImage: ctaSymbol)
-                                .font(.headline.weight(.black))
-                                .frame(maxWidth: .infinity)
-                        }
+                        Label(ctaTitle, systemImage: ctaSymbol)
+                            .font(.headline.weight(.black))
+                            .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(SWPrimaryGlassButtonStyle(tint: canStart ? Theme.accent : Theme.red))
+                    .shimmerSweep(duration: 1.15, delay: 0.8)
                 }
                 .padding(.horizontal, 22)
                 .padding(.bottom, 24)
@@ -393,6 +393,7 @@ private struct TargetImpactCard: View {
 private struct TimeImpactCard: View {
     let title: String
     let schedule: StudySchedule
+    private let comfortablePerQuestionMinutes = 20
 
     private var perQuestionMinutes: Int {
         guard schedule.averageProblemsPerDay > 0 else { return schedule.settings.problemBlockMinutes }
@@ -400,7 +401,7 @@ private struct TimeImpactCard: View {
     }
 
     private var isComfortable: Bool {
-        perQuestionMinutes >= 15
+        perQuestionMinutes >= comfortablePerQuestionMinutes
     }
 
     var body: some View {
@@ -419,8 +420,15 @@ private struct TimeImpactCard: View {
             }
 
             HStack(spacing: 10) {
-                CompactMetricTile(title: "Problem time", value: "\(schedule.settings.problemBlockMinutes)m", symbol: "hourglass", tint: Theme.glassBlue)
+                CompactMetricTile(title: "Coding time", value: "\(schedule.settings.problemBlockMinutes)m", symbol: "keyboard.fill", tint: Theme.glassBlue)
                 CompactMetricTile(title: "Per question", value: "\(perQuestionMinutes)m", symbol: "timer", tint: isComfortable ? Theme.green : Theme.red)
+            }
+
+            if !isComfortable {
+                Text("19m/question or under is tight. Add time or push the finish date.")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(13)
@@ -466,8 +474,8 @@ private struct TimeBudgetBreakdown: View {
             .frame(height: 10)
 
             HStack(spacing: 10) {
-                BudgetLegendDot(title: "Design rep", value: "\(schedule.settings.fixedMinutes)m", color: Theme.ink)
-                BudgetLegendDot(title: "Questions", value: "\(schedule.settings.problemBlockMinutes)m", color: Theme.accent)
+                BudgetLegendDot(title: "System design", value: "\(schedule.settings.fixedMinutes)m", color: Theme.ink)
+                BudgetLegendDot(title: "Coding", value: "\(schedule.settings.problemBlockMinutes)m", color: Theme.accent)
             }
         }
         .padding(13)

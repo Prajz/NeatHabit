@@ -352,7 +352,7 @@ private struct DailyFlowCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(
                     title: "System design",
-                    subtitle: "Turn the prompt into interview-ready structure. Each checkbox is a thing to say or sketch."
+                    subtitle: "Spend 20 minutes on the daily design question before or after coding."
                 )
 
                 VStack(spacing: 11) {
@@ -412,7 +412,7 @@ private struct SystemDesignFocusRow: View {
                     Text("20-minute design rep")
                         .font(.headline.weight(.black))
                         .foregroundStyle(Theme.ink)
-                    Text(completed ? "Ready to explain" : "Build the answer in parts")
+                    Text(completed ? "Ready to explain" : "Build the interview answer in parts")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(Theme.muted)
                 }
@@ -495,10 +495,11 @@ private struct SystemDesignChecklistItem: Identifiable {
 }
 
 private let systemDesignChecklist = [
-    SystemDesignChecklistItem(id: "requirements", title: "State the goal", prompt: "Name the users, core action, and 2 hard constraints."),
-    SystemDesignChecklistItem(id: "apis-data", title: "Sketch API + data", prompt: "Write the main endpoint/event and the data you need to store."),
-    SystemDesignChecklistItem(id: "scale", title: "Call out scale path", prompt: "Pick the bottleneck: reads, writes, storage, fanout, or latency."),
-    SystemDesignChecklistItem(id: "tradeoff", title: "Say one tradeoff", prompt: "Explain what you chose and what gets worse because of it.")
+    SystemDesignChecklistItem(id: "requirements", title: "Clarify scope", prompt: "Name users, core actions, non-goals, and 2 hard constraints."),
+    SystemDesignChecklistItem(id: "apis-data", title: "Model API + data", prompt: "Write the main request/event and the tables, keys, or objects it touches."),
+    SystemDesignChecklistItem(id: "architecture", title: "Draw the flow", prompt: "Client, edge/API, service, queue/cache if needed, storage, and the read/write path."),
+    SystemDesignChecklistItem(id: "scale", title: "Find the bottleneck", prompt: "Pick the pressure point: reads, writes, fanout, storage, hot keys, or latency."),
+    SystemDesignChecklistItem(id: "tradeoff", title: "Defend a tradeoff", prompt: "Say what you chose, what gets worse, and how you would monitor it.")
 ]
 
 private struct HabitRow: View {
@@ -1523,7 +1524,7 @@ private struct GuideRulesCard: View {
                 GuideRuleRow(
                     symbol: "server.rack",
                     title: "System design",
-                    bodyText: "One focused topic stays in the daily loop."
+                    bodyText: "Budget 20 minutes for one design question: scope, API/data, flow, bottleneck, tradeoff."
                 )
             }
         }

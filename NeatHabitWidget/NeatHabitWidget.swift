@@ -1,5 +1,6 @@
 import AppIntents
 import SwiftUI
+import UIKit
 import WidgetKit
 
 struct NeatHabitEntry: TimelineEntry {
@@ -63,12 +64,12 @@ struct SmallHomeWidget: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("D\(day.day)")
+                    Text("Day \(day.day)")
                         .font(.caption.weight(.black))
                         .monospacedDigit()
                     Text("NeatHabit")
                         .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white.opacity(0.68))
+                        .foregroundStyle(WidgetTheme.muted)
                 }
 
                 Spacer()
@@ -90,9 +91,9 @@ struct SmallHomeWidget: View {
 
             HabitDots(daily: daily, activeHabits: activeHabits, bright: true)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(WidgetTheme.ink)
         .containerBackground(for: .widget) {
-            WidgetGlassBackground()
+            WidgetAdaptiveBackground()
         }
     }
 }
@@ -159,7 +160,7 @@ struct MediumHomeWidget: View {
             .frame(width: 44)
         }
         .containerBackground(for: .widget) {
-            WidgetLightBackground()
+            WidgetAdaptiveBackground()
         }
     }
 }
@@ -174,7 +175,7 @@ struct CircularLockWidget: View {
 
     var body: some View {
         Gauge(value: fraction) {
-            Text("D\(day.day)")
+            Text("Day \(day.day)")
         } currentValueLabel: {
             Text("\(Int((fraction * 100).rounded()))")
                 .font(.caption2.weight(.black))
@@ -200,7 +201,7 @@ struct RectangularLockWidget: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                Text("D\(day.day)")
+                Text("Day \(day.day)")
                     .font(.caption2.weight(.black))
                     .monospacedDigit()
                 Text(day.topic)
@@ -235,7 +236,7 @@ struct InlineLockWidget: View {
     private var completedActiveHabitCount: Int { activeHabits.filter { daily.completedHabits.contains($0) }.count }
 
     var body: some View {
-        Text("D\(day.day) - \(completedActiveHabitCount)/\(activeHabitCount) habits - \(counts.attempted)/\(day.problems.count) problems")
+        Text("Day \(day.day) - \(completedActiveHabitCount)/\(activeHabitCount) habits - \(counts.attempted)/\(day.problems.count) problems")
             .widgetAccentable()
             .containerBackground(.clear, for: .widget)
     }
@@ -258,7 +259,7 @@ struct HabitDots: View {
 
     private func dotColor(for habit: StudyHabit) -> Color {
         guard daily.completedHabits.contains(habit) else {
-            return bright ? .white.opacity(0.26) : .primary.opacity(0.2)
+            return bright ? WidgetTheme.muted.opacity(0.28) : .primary.opacity(0.2)
         }
 
         return bright ? WidgetTheme.accent : .primary
@@ -306,15 +307,26 @@ struct WidgetStat: View {
     }
 }
 
-struct WidgetGlassBackground: View {
+struct WidgetAdaptiveBackground: View {
     var body: some View {
-        Color(red: 0.06, green: 0.07, blue: 0.10)
-    }
-}
-
-struct WidgetLightBackground: View {
-    var body: some View {
-        Color(red: 0.955, green: 0.965, blue: 0.98)
+        ZStack {
+            WidgetTheme.canvas
+            LinearGradient(
+                colors: [
+                    .white.opacity(0.12),
+                    .clear,
+                    WidgetTheme.accent.opacity(0.08)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [WidgetTheme.accent.opacity(0.12), .clear],
+                center: .topTrailing,
+                startRadius: 8,
+                endRadius: 150
+            )
+        }
     }
 }
 
@@ -339,13 +351,21 @@ struct NeatHabitWidgetBundle: WidgetBundle {
 }
 
 private enum WidgetTheme {
-    static let ink = Color(red: 0.075, green: 0.092, blue: 0.125)
-    static let muted = Color(red: 0.36, green: 0.40, blue: 0.43)
-    static let accent = Color(red: 0.16, green: 0.38, blue: 0.86)
-    static let blue = Color(red: 0.38, green: 0.43, blue: 0.56)
-    static let green = Color(red: 0.20, green: 0.58, blue: 0.34)
-    static let amber = Color(red: 0.78, green: 0.49, blue: 0.16)
-    static let red = Color(red: 0.72, green: 0.25, blue: 0.24)
+    static let ink = dynamic(light: (0.075, 0.092, 0.125), dark: (0.82, 0.87, 0.94))
+    static let muted = dynamic(light: (0.36, 0.40, 0.43), dark: (0.55, 0.61, 0.70))
+    static let canvas = dynamic(light: (0.955, 0.965, 0.98), dark: (0.075, 0.086, 0.105))
+    static let accent = dynamic(light: (0.16, 0.38, 0.86), dark: (0.48, 0.66, 0.92))
+    static let blue = dynamic(light: (0.38, 0.43, 0.56), dark: (0.54, 0.62, 0.73))
+    static let green = dynamic(light: (0.20, 0.58, 0.34), dark: (0.45, 0.72, 0.55))
+    static let amber = dynamic(light: (0.78, 0.49, 0.16), dark: (0.86, 0.65, 0.34))
+    static let red = dynamic(light: (0.72, 0.25, 0.24), dark: (0.90, 0.48, 0.46))
+
+    private static func dynamic(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
+        Color(uiColor: UIColor { traits in
+            let values = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: values.0, green: values.1, blue: values.2, alpha: 1)
+        })
+    }
 }
 
 private func widgetPercent(_ fraction: Double) -> String {
