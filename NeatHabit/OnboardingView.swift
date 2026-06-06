@@ -41,7 +41,10 @@ struct OnboardingView: View {
 
     private var ctaTitle: String {
         if page == 4 {
-            return canStart ? "Start today" : "Adjust time"
+            return canStart ? "See the app" : "Adjust time"
+        }
+        if page == 6 {
+            return "Start studying"
         }
 
         return "Next"
@@ -49,7 +52,10 @@ struct OnboardingView: View {
 
     private var ctaSymbol: String {
         if page == 4 {
-            return canStart ? "checkmark" : "timer"
+            return canStart ? "arrow.right" : "timer"
+        }
+        if page == 6 {
+            return "checkmark"
         }
 
         return "arrow.right"
@@ -265,13 +271,80 @@ struct OnboardingView: View {
                                 .padding(.horizontal, 4)
                             }
                             ReminderPreviewCard(settings: settings)
+                            ColorKeyCard()
                         }
                     }
                     .tag(4)
+
+                    OnboardingPageCard(
+                        eyebrow: "Daily",
+                        symbol: "target",
+                        tint: Theme.accent,
+                        title: "Your daily view.",
+                        subtitle: "Everything you do today lives on one screen."
+                    ) {
+                        VStack(spacing: 8) {
+                            DailySectionHintRow(
+                                icon: "checklist",
+                                tint: Theme.accent,
+                                title: "Questions for today",
+                                bodyText: "Rate each green, yellow, or red as you go."
+                            )
+                            DailySectionHintRow(
+                                icon: "server.rack",
+                                tint: Theme.glassBlue,
+                                title: "Daily system design",
+                                bodyText: "One topic, walked through on a deep-dive page."
+                            )
+                            DailySectionHintRow(
+                                icon: "calendar",
+                                tint: Theme.green,
+                                title: "Future days",
+                                bodyText: "Swipe the day strip at the top to peek ahead."
+                            )
+                            DailySectionHintRow(
+                                icon: "square.and.pencil",
+                                tint: Theme.amber,
+                                title: "Notes",
+                                bodyText: "Capture the template or bug that should stick."
+                            )
+                        }
+                    }
+                    .tag(5)
+
+                    OnboardingPageCard(
+                        eyebrow: "Tools",
+                        symbol: "square.grid.2x2.fill",
+                        tint: Theme.glassBlue,
+                        title: "Your toolkit.",
+                        subtitle: "Three more tabs, all reachable from the bar below."
+                    ) {
+                        VStack(spacing: 8) {
+                            DailySectionHintRow(
+                                icon: "map.fill",
+                                tint: Theme.accent,
+                                title: "Roadmap",
+                                bodyText: "The full 150-question bank, grouped by topic."
+                            )
+                            DailySectionHintRow(
+                                icon: "chart.bar.xaxis",
+                                tint: Theme.green,
+                                title: "Progress",
+                                bodyText: "Your streaks, targets, and color breakdown."
+                            )
+                            DailySectionHintRow(
+                                icon: "questionmark.circle.fill",
+                                tint: Theme.glassBlue,
+                                title: "Guide",
+                                bodyText: "Rules, settings, and the redo onboarding button."
+                            )
+                        }
+                    }
+                    .tag(6)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
-                OnboardingProgressRail(page: page, count: 5)
+                OnboardingProgressRail(page: page, count: 7)
                     .padding(.horizontal, ScreenScale.scale(22))
 
                 HStack(spacing: 12) {
@@ -288,7 +361,7 @@ struct OnboardingView: View {
                     }
 
                     Button {
-                        if page < 4 {
+                        if page < 6 {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                                 page += 1
                             }
@@ -685,6 +758,83 @@ private struct OnboardingStepRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.ink)
+                Text(bodyText)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(8)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct ColorKeyCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text("Color key")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.muted)
+                Spacer()
+            }
+
+            HStack(spacing: 8) {
+                ColorKeyDot(tint: Theme.green, label: "Green", detail: "Got it solo")
+                ColorKeyDot(tint: Theme.amber, label: "Yellow", detail: "Needed a hint")
+                ColorKeyDot(tint: Theme.red, label: "Red", detail: "Redo later")
+            }
+        }
+        .padding(10)
+        .glassControlBackground(tint: Theme.glassBlue)
+    }
+}
+
+private struct ColorKeyDot: View {
+    let tint: Color
+    let label: String
+    let detail: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(tint)
+                    .frame(width: 8, height: 8)
+                Text(label)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Theme.ink)
+            }
+            Text(detail)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(Theme.muted)
+                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct DailySectionHintRow: View {
+    let icon: String
+    let tint: Color
+    let title: String
+    let bodyText: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint)
+                .frame(width: 32, height: 32)
+                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.ink)
                 Text(bodyText)
                     .font(.caption2.weight(.medium))

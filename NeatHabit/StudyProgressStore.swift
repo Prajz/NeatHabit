@@ -4,6 +4,7 @@ import UserNotifications
 import WidgetKit
 
 private let onboardingStorageKey = "neatHabit.onboarding.v1"
+private let welcomeTourStorageKey = "neatHabit.welcomeTour.v1"
 private let dailyReminderIdentifier = "neatHabit.dailyReminder"
 private let morningReminderPrefix = "neatHabit.morning."
 private let maximumDailyMinutes = 240
@@ -12,6 +13,7 @@ private let maximumDailyMinutes = 240
 final class StudyProgressStore: ObservableObject {
     @Published private(set) var progress: StoredProgress
     @Published private(set) var hasCompletedOnboarding: Bool
+    @Published private(set) var hasSeenWelcomeTour: Bool
 
     private let onboardingDefaults: UserDefaults
 
@@ -30,6 +32,12 @@ final class StudyProgressStore: ObservableObject {
             hasCompletedOnboarding = storedValue
         } else {
             hasCompletedOnboarding = ProgressPersistence.hasSavedProgress()
+        }
+
+        if let storedValue = onboardingDefaults.object(forKey: welcomeTourStorageKey) as? Bool {
+            hasSeenWelcomeTour = storedValue
+        } else {
+            hasSeenWelcomeTour = false
         }
     }
 
@@ -286,6 +294,16 @@ final class StudyProgressStore: ObservableObject {
         Task {
             await scheduleAllRemindersIfNeeded()
         }
+    }
+
+    func completeWelcomeTour() {
+        hasSeenWelcomeTour = true
+        onboardingDefaults.set(true, forKey: welcomeTourStorageKey)
+    }
+
+    func restartWelcomeTour() {
+        hasSeenWelcomeTour = false
+        onboardingDefaults.set(false, forKey: welcomeTourStorageKey)
     }
 
     func restartOnboarding(resetTimeline: Bool = false) {
