@@ -735,11 +735,13 @@ private struct ProblemRow: View {
                 }
                 .frame(width: 32, height: 32)
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(problem)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    ProblemDifficultyBadge(difficulty: StudyPlanner.difficulty(for: problem))
                 }
 
                 Spacer(minLength: 8)
@@ -784,6 +786,29 @@ private struct ProblemRow: View {
         }
 
         return shortDateText(redoDate)
+    }
+}
+
+private struct ProblemDifficultyBadge: View {
+    let difficulty: ProblemDifficulty
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text("Difficulty")
+                .foregroundStyle(Theme.muted)
+            Text(difficulty.title)
+                .foregroundStyle(Theme.ink)
+        }
+        .font(.caption2.weight(.bold))
+        .tracking(0.25)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Theme.cardFill, in: Capsule())
+        .overlay {
+            Capsule()
+                .strokeBorder(Theme.hairline.opacity(0.55), lineWidth: 1)
+        }
+        .accessibilityLabel("Difficulty: \(difficulty.title)")
     }
 }
 
@@ -1182,10 +1207,14 @@ private struct RoadmapProblemChecklistRow: View {
                     .font(.title3.weight(.bold))
                     .foregroundStyle(isChecked ? status.tint : Theme.muted.opacity(0.55))
 
-                Text(problem)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Theme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(problem)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Theme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    ProblemDifficultyBadge(difficulty: StudyPlanner.difficulty(for: problem))
+                }
 
                 Spacer(minLength: 8)
 
@@ -1462,6 +1491,7 @@ private struct GuideSetupCard: View {
     @State private var showDateEditor = false
     @State private var showTimeEditor = false
     @State private var showReminderEditor = false
+    @State private var shuffleSummary: String?
 
     private var perQuestionMinutes: Int {
         guard schedule.averageProblemsPerDay > 0 else { return schedule.settings.problemBlockMinutes }
@@ -1766,6 +1796,26 @@ private struct GuideSetupCard: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.glass)
+
+                    Button {
+                        let moved = store.shuffleCompletedFutureProblems()
+                        Haptics.selection()
+                        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                            shuffleSummary = moved == 0 ? "No completed future problems to move." : "Moved \(moved) completed \(moved == 1 ? "problem" : "problems") into earlier open slots."
+                        }
+                    } label: {
+                        Label("Shuffle problems", systemImage: "shuffle")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.glass)
+
+                    if let shuffleSummary {
+                        Text(shuffleSummary)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 12)
+                    }
 
                     Button {
                         store.restartOnboarding()

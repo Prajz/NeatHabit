@@ -9,6 +9,12 @@ private let dailyReminderIdentifier = "neatHabit.dailyReminder"
 private let morningReminderPrefix = "neatHabit.morning."
 private let maximumDailyMinutes = 240
 
+private struct ShuffledProblemCandidate {
+    let day: Int
+    let problem: String
+    let status: ProblemStatus
+}
+
 @MainActor
 final class StudyProgressStore: ObservableObject {
     @Published private(set) var progress: StoredProgress
@@ -262,6 +268,42 @@ final class StudyProgressStore: ObservableObject {
         commit(nextProgress)
     }
 
+    @discardableResult
+    func shuffleCompletedFutureProblems() -> Int {
+        var nextProgress = progress
+        let baseSchedule = StudyPlanner.plan(startDate: progress.startDate, settings: progress.settings)
+        let problemOrder = baseSchedule.days.flatMap(\.problems).enumerated().reduce(into: [String: Int]()) { result, item in
+            if result[item.element] == nil {
+                result[item.element] = item.offset
+            }
+        }
+        var movedCount = 0
+
+        for targetDay in baseSchedule.days {
+            var targetDaily = nextProgress.dailyProgress(for: targetDay.day)
+            let occupiedCount = targetDaily.problemStatuses.values.filter { $0 != .untouched }.count
+            var openSlots = max(0, targetDay.problems.count - occupiedCount)
+
+            while openSlots > 0, let candidate = completedFutureCandidate(after: targetDay.day, in: nextProgress, problemOrder: problemOrder, excluding: Set(targetDaily.problemStatuses.keys)) {
+                var sourceDaily = nextProgress.dailyProgress(for: candidate.day)
+                sourceDaily.problemStatuses.removeValue(forKey: candidate.problem)
+                sourceDaily.redoDates.removeValue(forKey: candidate.problem)
+                nextProgress.dayProgress[candidate.day] = sourceDaily
+
+                targetDaily.problemStatuses[candidate.problem] = candidate.status
+                targetDaily.redoDates.removeValue(forKey: candidate.problem)
+                nextProgress.dayProgress[targetDay.day] = targetDaily
+
+                openSlots -= 1
+                movedCount += 1
+            }
+        }
+
+        guard movedCount > 0 else { return 0 }
+        commit(nextProgress)
+        return movedCount
+    }
+
     func toggleRoadmapProblem(_ problem: String, lockingThrough day: Int? = nil) {
         if progress.status(for: problem) == .untouched {
             setStatus(.green, for: problem, day: plannedDay(for: problem, lockingThrough: day))
@@ -294,6 +336,24 @@ final class StudyProgressStore: ObservableObject {
     private func plannedDay(for problem: String, lockingThrough day: Int? = nil) -> Int {
         let currentSchedule = day.map { StudyPlanner.plan(for: progress, lockThroughDay: $0) } ?? schedule
         return currentSchedule.days.first { $0.problems.contains(problem) }?.day ?? progress.currentDayNumber(in: currentSchedule)
+    }
+
+    private func completedFutureCandidate(after day: Int, in progress: StoredProgress, problemOrder: [String: Int], excluding excludedProblems: Set<String>) -> ShuffledProblemCandidate? {
+        let futureDays = progress.dayProgress.keys.sorted().filter { $0 > day }
+
+        for futureDay in futureDays {
+            let daily = progress.dailyProgress(for: futureDay)
+            let problems = daily.problemStatuses.keys.sorted { first, second in
+                (problemOrder[first] ?? Int.max) < (problemOrder[second] ?? Int.max)
+            }
+
+            for problem in problems where !excludedProblems.contains(problem) {
+                guard let status = daily.problemStatuses[problem], status == .green || status == .yellow else { continue }
+                return ShuffledProblemCandidate(day: futureDay, problem: problem, status: status)
+            }
+        }
+
+        return nil
     }
 
     func resetTimeline(startDate: Date = Date(), keepSettings: Bool = true) {

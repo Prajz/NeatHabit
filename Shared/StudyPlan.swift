@@ -149,6 +149,25 @@ enum ProblemStatus: String, CaseIterable, Codable, Hashable, Identifiable {
     }
 }
 
+enum ProblemDifficulty: String, Codable, Hashable, Identifiable {
+    case easy
+    case medium
+    case hard
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .easy:
+            return "Easy"
+        case .medium:
+            return "Medium"
+        case .hard:
+            return "Hard"
+        }
+    }
+}
+
 struct StudySettings: Codable, Equatable {
     var dailyMinutes: Int
     var targetFinishDate: Date
@@ -301,6 +320,18 @@ enum StudyPlanner {
         sections.flatMap(\.problems)
     }
 
+    static func difficulty(for problem: String) -> ProblemDifficulty {
+        if easyProblems.contains(problem) {
+            return .easy
+        }
+
+        if hardProblems.contains(problem) {
+            return .hard
+        }
+
+        return .medium
+    }
+
     static func plan(for progress: StoredProgress, lockThroughDay requestedLockThroughDay: Int? = nil) -> StudySchedule {
         let baseSchedule = plan(startDate: progress.startDate, settings: progress.settings)
         let currentDay = progress.currentDayNumber(in: baseSchedule)
@@ -311,19 +342,20 @@ enum StudyPlanner {
         var adaptedDaysByNumber: [Int: StudyDay] = [:]
 
         for day in baseSchedule.days where day.day <= lockThroughDay || progress.hasRecordedWork(for: day.day) {
-            let recordedProblems = progress.dailyProgress(for: day.day).problemStatuses.compactMap { problem, status in
+            let recordedProblems = orderedByProblemBank(progress.dailyProgress(for: day.day).problemStatuses.compactMap { problem, status in
                 status == .untouched ? nil : problem
-            }
-            let problems = orderedUnique(day.problems + recordedProblems)
+            })
+            let problems = Array(orderedUnique(recordedProblems + day.problems).prefix(max(day.problems.count, recordedProblems.count)))
+            let problemRefs = problems.compactMap(problemRef)
             lockedProblemTitles.formUnion(problems)
             lockedDayNumbers.insert(day.day)
             adaptedDaysByNumber[day.day] = StudyDay(
                 day: day.day,
-                topic: day.topic,
+                topic: topic(for: problemRefs),
                 problems: problems,
                 systemDesignFocus: day.systemDesignFocus,
                 date: day.date,
-                sections: day.sections
+                sections: orderedUnique(problemRefs.map(\.sectionTitle))
             )
         }
 
@@ -541,6 +573,29 @@ enum StudyPlanner {
             section.problems.map { ProblemRef(title: $0, sectionTitle: section.title) }
         }
     }
+
+    private static func problemRef(for title: String) -> ProblemRef? {
+        if let required = requiredProblems.first(where: { $0.title == title }) {
+            return required
+        }
+
+        return ProblemRef(title: title, sectionTitle: "Extra Practice")
+    }
+
+    private static func orderedByProblemBank(_ values: [String]) -> [String] {
+        let problemIndex = Dictionary(uniqueKeysWithValues: requiredProblemTitles.enumerated().map { ($0.element, $0.offset) })
+        return values.sorted { first, second in
+            (problemIndex[first] ?? Int.max) < (problemIndex[second] ?? Int.max)
+        }
+    }
+
+    private static let easyProblems: Set<String> = [
+        "Contains Duplicate", "Valid Anagram", "Two Sum", "Valid Palindrome", "Best Time to Buy And Sell Stock", "Valid Parentheses", "Binary Search", "Reverse Linked List", "Merge Two Sorted Lists", "Linked List Cycle", "Invert Binary Tree", "Maximum Depth of Binary Tree", "Diameter of Binary Tree", "Balanced Binary Tree", "Same Tree", "Subtree of Another Tree", "Lowest Common Ancestor of a Binary Search Tree", "Kth Largest Element In a Stream", "Last Stone Weight", "Climbing Stairs", "Min Cost Climbing Stairs", "Meeting Rooms", "Happy Number", "Plus One", "Single Number", "Number of 1 Bits", "Counting Bits", "Reverse Bits", "Missing Number"
+    ]
+
+    private static let hardProblems: Set<String> = [
+        "Trapping Rain Water", "Minimum Window Substring", "Sliding Window Maximum", "Largest Rectangle In Histogram", "Median of Two Sorted Arrays", "Merge K Sorted Lists", "Reverse Nodes In K Group", "Binary Tree Maximum Path Sum", "Serialize And Deserialize Binary Tree", "Find Median From Data Stream", "Word Search II", "Word Ladder", "Network Delay Time", "Reconstruct Itinerary", "Swim In Rising Water", "Alien Dictionary", "N Queens", "Longest Increasing Path In a Matrix", "Distinct Subsequences", "Edit Distance", "Burst Balloons", "Regular Expression Matching", "Minimum Interval to Include Each Query"
+    ]
 
     private static func balancedCounts(total: Int, buckets: Int) -> [Int] {
         guard buckets > 0 else { return [] }

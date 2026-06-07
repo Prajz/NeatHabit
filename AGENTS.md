@@ -8,10 +8,10 @@
 
 A tracker for a 30-day, 60-day, or custom-length interview prep plan:
 
-- **Today tab.** Day strip, problem list with Green/Yellow/Red status, system design rep, study notes, redo queue.
+- **Today tab.** Day strip, problem list with neutral difficulty badges plus Green/Yellow/Red status, system design rep, study notes, redo queue.
 - **Roadmap tab.** Full NeetCode 150 bank grouped by category. Tap to mark ahead — future days rebalance.
 - **Progress tab.** Month-level stats. Target bars: ≥80 green, ~40 yellow, <30 red.
-- **Guide tab.** Rules, settings, and a "redo onboarding" button.
+- **Guide tab.** Rules, settings, "show app tour", "shuffle problems", and "redo onboarding" controls.
 - **Widget extension.** Small/medium home + circular/rectangular/inline lock-screen widgets. Reads App Group storage. One AppIntent: `ToggleHabitIntent`.
 
 It does **not** run code, fetch problems, or talk to a network. All 150 problems, ~30 system design topics, and the entire plan generator are bundled. This is intentional. Keep it that way unless the user asks.
@@ -24,9 +24,9 @@ It does **not** run code, fetch problems, or talk to a network. All 150 problems
 NeatHabit/
 ├── NeatHabit/                      # Main app target
 │   ├── NeatHabitApp.swift              # @main entry
-│   ├── ContentView.swift               # 2,484 lines. Tab roots, cards, tour overlay. Needs splitting (see §7).
+│   ├── ContentView.swift               # 2,534 lines. Tab roots, cards, tour overlay. Needs splitting (see §7).
 │   ├── OnboardingView.swift            # 7-page onboarding flow with async completion state
-│   ├── StudyProgressStore.swift        # @MainActor store + notifications
+│   ├── StudyProgressStore.swift        # @MainActor store + notifications + problem shuffle
 │   ├── SystemDesignDetailView.swift    # System design topic detail page
 │   ├── SystemDesignTopic.swift         # ~30 system design topics as Swift data
 │   ├── DesignSystem.swift              # Theme, AppFont, LiquidGlassCard, buttons, haptics
@@ -149,6 +149,9 @@ Persisted at `UserDefaults(suiteName: appGroupIdentifier).data(forKey: "neatHabi
 ### ProblemStatus
 `untouched → green → yellow → red → untouched`. `red` triggers a redo date suggestion and schedules a 9 AM morning reminder.
 
+### ProblemDifficulty
+`easy / medium / hard` is static bundled metadata from `StudyPlanner.difficulty(for:)`. Difficulty must stay visually neutral. Do not use green/yellow/red for difficulty because those colors are reserved for confidence/status.
+
 ### RedoCandidate
 Returned by `StoredProgress.redoCandidates(for:in:)`. Sorted by due date. Used to populate the "Review + redo" card on Today and Upcoming card on Progress.
 
@@ -166,6 +169,8 @@ Returned by `StoredProgress.redoCandidates(for:in:)`. Sorted by due date. Used t
 - **Haptics** go through `Haptics.selection()` / `Haptics.success()`. Do not call `UIImpactFeedbackGenerator` directly.
 - **App Group writes** go through `ProgressPersistence.save(_:)`. That is the only sanctioned way.
 - **Notifications** are scheduled by `StudyProgressStore`. Do not call `UNUserNotificationCenter` from a view.
+- **Difficulty badges** are neutral metadata. Keep them monochrome/muted and visually separate from Green/Yellow/Red status chips.
+- **Shuffle problems** compacts Green/Yellow future work into earlier open day capacity. It intentionally does not move Red redo items.
 
 ---
 
@@ -189,7 +194,7 @@ Read this before changing anything. Each item has been verified in the current c
 
 ### Medium — refactor opportunity
 
-2. **Split `ContentView.swift`.** 2,484 lines still contain tab roots, cards, the redo sheet, the tour overlay, and utility functions. Suggested folders: `Views/Today`, `Views/Roadmap`, `Views/Progress`, `Views/Guide`, `Views/Tour`, `Views/Components`.
+2. **Split `ContentView.swift`.** 2,534 lines still contain tab roots, cards, the redo sheet, the tour overlay, and utility functions. Suggested folders: `Views/Today`, `Views/Roadmap`, `Views/Progress`, `Views/Guide`, `Views/Tour`, `Views/Components`.
 3. **Move `Shared/` into a local SPM package.** Currently the same files are in two `Sources` build phases. A package gives you one place to edit and a real module boundary.
 4. **No localization.** Strings are hardcoded English. If a feature must be localized, switch to a string catalog first.
 
@@ -263,14 +268,14 @@ When you are asked to add something new:
 | File | Lines | Owns |
 |---|---|---|
 | `NeatHabit/NeatHabitApp.swift` | 13 | `@main` entry |
-| `NeatHabit/ContentView.swift` | 2,484 | All tabs, all cards, tour overlay, redo sheet, helpers |
+| `NeatHabit/ContentView.swift` | 2,534 | All tabs, all cards, tour overlay, redo sheet, helpers |
 | `NeatHabit/OnboardingView.swift` | 866 | 7-page onboarding flow |
-| `NeatHabit/StudyProgressStore.swift` | 446 | Store, persistence glue, notification scheduling |
+| `NeatHabit/StudyProgressStore.swift` | 506 | Store, persistence glue, notification scheduling, shuffle compaction |
 | `NeatHabit/SystemDesignDetailView.swift` | 516 | System design topic detail page (hero, diagram, concepts, talking points, tradeoffs) |
 | `NeatHabit/SystemDesignTopic.swift` | 1,040 | ~30 system design topics as static data |
 | `NeatHabit/DesignSystem.swift` | 396 | `Theme`, `AppFont`, `ScreenScale`, `AppBackground`, `LiquidGlassCard`, button styles, haptics, shimmer |
 | `NeatHabit/PrivacyInfo.xcprivacy` | 27 | Privacy manifest for app and widget resources |
-| `Shared/StudyPlan.swift` | 588 | `StudySettings`, `StudyDay`, `StudySchedule`, `StudyPlanner`, NeetCode 150 sections, system design rotation |
+| `Shared/StudyPlan.swift` | 643 | `StudySettings`, `StudyDay`, `StudySchedule`, `StudyPlanner`, NeetCode 150 sections, difficulty metadata, system design rotation |
 | `Shared/StudyProgress.swift` | 339 | `DailyProgress`, `StoredProgress`, `StatusCounts`, `PlanSummary`, `RedoCandidate`, `ProgressPersistence` |
 | `NeatHabitWidget/NeatHabitWidget.swift` | 373 | Provider, entry, all 5 widget families, `WidgetTheme` |
 | `NeatHabitWidget/WidgetActions.swift` | 40 | `ToggleHabitIntent` (one AppIntent) |
@@ -281,8 +286,10 @@ When you are asked to add something new:
 
 - **App Group.** Shared container between the main app and widget extension. `group.uk.co.praj.NeatHabit`. Required for the widget to read `StoredProgress`.
 - **Green / Yellow / Red.** Problem status. Green = got it solo in <35 min. Yellow = needed a hint. Red = did not understand; auto-schedules a redo.
+- **Easy / Medium / Hard.** Static problem difficulty metadata. It is shown in neutral badges and should never use the status colors.
 - **Redo queue.** Problems marked Red with a due date ≤ the selected day. Shown at the top of Today and on the Upcoming card.
 - **Rebalance.** When you mark a problem ahead of schedule (e.g. from Roadmap), future days shrink so you don't double-do work. Past/current days are locked by default, and Today can lock through the selected future day.
+- **Shuffle problems.** Guide action that moves Green/Yellow future-day statuses into the earliest earlier open slots. The planner then shifts displaced untouched problems forward. Red redo problems are not moved.
 - **Morning reminder.** 9 AM local notification on each day that has one or more red problems due. Scheduled by `StudyProgressStore.scheduleMorningReminderIfNeeded`.
 - **Daily reminder.** Repeating notification at the user's chosen time. Scheduled by `StudyProgressStore.scheduleDailyReminderIfNeeded`.
 - **Per-question budget.** `problemBlockMinutes / 20` minutes. The onboarding uses this to warn when the plan is too tight.
