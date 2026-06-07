@@ -24,12 +24,13 @@ It does **not** run code, fetch problems, or talk to a network. All 150 problems
 NeatHabit/
 ├── NeatHabit/                      # Main app target
 │   ├── NeatHabitApp.swift              # @main entry
-│   ├── ContentView.swift               # 2,534 lines. Tab roots, cards, tour overlay. Needs splitting (see §7).
+│   ├── ContentView.swift               # Root onboarding/tab switch and welcome tour overlay
 │   ├── OnboardingView.swift            # 7-page onboarding flow with async completion state
 │   ├── StudyProgressStore.swift        # @MainActor store + notifications + problem shuffle
 │   ├── SystemDesignDetailView.swift    # System design topic detail page
 │   ├── SystemDesignTopic.swift         # ~30 system design topics as Swift data
 │   ├── DesignSystem.swift              # Theme, AppFont, LiquidGlassCard, buttons, haptics
+│   ├── Views/                          # Today/Roadmap/Progress/Guide/Tour/Components SwiftUI views
 │   ├── PrivacyInfo.xcprivacy           # Privacy manifest used by app + widget targets
 │   ├── Info.plist
 │   ├── NeatHabit.entitlements          # App Group: group.uk.co.praj.NeatHabit
@@ -187,6 +188,7 @@ Read this before changing anything. Each item has been verified in the current c
 5. **Tour tab bar sizing.** `WelcomeTourView` measures the actual `UITabBar` height when available.
 6. **Privacy manifest.** `NeatHabit/PrivacyInfo.xcprivacy` is included in both app and widget resources and declares `UserDefaults` required-reason API usage.
 7. **Redo reminder churn.** Redo reminders are refreshed only when red status or redo date state changes, including when a red roadmap problem is cleared.
+8. **Split `ContentView.swift`.** Tab roots, cards, shared view pieces, and the welcome tour now live under `Views/Today`, `Views/Roadmap`, `Views/Progress`, `Views/Guide`, `Views/Tour`, and `Views/Components`.
 
 ### High — fix before next release
 
@@ -194,9 +196,8 @@ Read this before changing anything. Each item has been verified in the current c
 
 ### Medium — refactor opportunity
 
-2. **Split `ContentView.swift`.** 2,534 lines still contain tab roots, cards, the redo sheet, the tour overlay, and utility functions. Suggested folders: `Views/Today`, `Views/Roadmap`, `Views/Progress`, `Views/Guide`, `Views/Tour`, `Views/Components`.
-3. **Move `Shared/` into a local SPM package.** Currently the same files are in two `Sources` build phases. A package gives you one place to edit and a real module boundary.
-4. **No localization.** Strings are hardcoded English. If a feature must be localized, switch to a string catalog first.
+2. **Move `Shared/` into a local SPM package.** Currently the same files are in two `Sources` build phases. A package gives you one place to edit and a real module boundary.
+3. **No localization.** Strings are hardcoded English. If a feature must be localized, switch to a string catalog first.
 
 ### Low — nice to have
 
@@ -268,7 +269,14 @@ When you are asked to add something new:
 | File | Lines | Owns |
 |---|---|---|
 | `NeatHabit/NeatHabitApp.swift` | 13 | `@main` entry |
-| `NeatHabit/ContentView.swift` | 2,534 | All tabs, all cards, tour overlay, redo sheet, helpers |
+| `NeatHabit/ContentView.swift` | 91 | Root onboarding/tab switch and welcome tour overlay |
+| `NeatHabit/Views/Components/StudyScreen.swift` | 47 | Shared screen shell with tour frame collection |
+| `NeatHabit/Views/Components/SharedViewComponents.swift` | 103 | Shared badges, empty state row, status/habit styling, date helpers |
+| `NeatHabit/Views/Today/TodayTab.swift` | 874 | Today tab, day selector, problems, redo sheet, notes, system design card |
+| `NeatHabit/Views/Roadmap/RoadmapTab.swift` | 164 | Roadmap tab and question-bank checklist |
+| `NeatHabit/Views/Progress/ProgressTab.swift` | 262 | Progress tab cards and upcoming days |
+| `NeatHabit/Views/Guide/GuideTab.swift` | 614 | Guide tab, settings controls, topics, extras, rules |
+| `NeatHabit/Views/Tour/WelcomeTourView.swift` | 388 | Welcome tour overlay, anchors, probes, highlight geometry |
 | `NeatHabit/OnboardingView.swift` | 866 | 7-page onboarding flow |
 | `NeatHabit/StudyProgressStore.swift` | 506 | Store, persistence glue, notification scheduling, shuffle compaction |
 | `NeatHabit/SystemDesignDetailView.swift` | 516 | System design topic detail page (hero, diagram, concepts, talking points, tradeoffs) |
