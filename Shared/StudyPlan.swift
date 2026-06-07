@@ -301,15 +301,16 @@ enum StudyPlanner {
         sections.flatMap(\.problems)
     }
 
-    static func plan(for progress: StoredProgress) -> StudySchedule {
+    static func plan(for progress: StoredProgress, lockThroughDay requestedLockThroughDay: Int? = nil) -> StudySchedule {
         let baseSchedule = plan(startDate: progress.startDate, settings: progress.settings)
         let currentDay = progress.currentDayNumber(in: baseSchedule)
+        let lockThroughDay = baseSchedule.clampedDay(max(currentDay, requestedLockThroughDay ?? currentDay))
         let completedProblemTitles = progress.touchedProblemTitles
         var lockedProblemTitles = Set<String>()
         var lockedDayNumbers = Set<Int>()
         var adaptedDaysByNumber: [Int: StudyDay] = [:]
 
-        for day in baseSchedule.days where day.day <= currentDay || progress.hasRecordedWork(for: day.day) {
+        for day in baseSchedule.days where day.day <= lockThroughDay || progress.hasRecordedWork(for: day.day) {
             let recordedProblems = progress.dailyProgress(for: day.day).problemStatuses.compactMap { problem, status in
                 status == .untouched ? nil : problem
             }

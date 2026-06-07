@@ -16,6 +16,7 @@ final class StudyProgressStore: ObservableObject {
     @Published private(set) var hasSeenWelcomeTour: Bool
 
     private let onboardingDefaults: UserDefaults
+    private var widgetReloadTask: Task<Void, Never>?
 
     init(progress: StoredProgress = ProgressPersistence.load(), onboardingDefaults: UserDefaults = .standard) {
         self.onboardingDefaults = onboardingDefaults
@@ -43,6 +44,10 @@ final class StudyProgressStore: ObservableObject {
 
     var schedule: StudySchedule {
         StudyPlanner.plan(for: progress)
+    }
+
+    func schedule(lockingThrough day: Int) -> StudySchedule {
+        StudyPlanner.plan(for: progress, lockThroughDay: day)
     }
 
     func toggleHabit(_ habit: StudyHabit, day: Int) {
@@ -98,7 +103,8 @@ final class StudyProgressStore: ObservableObject {
     func setStatus(_ status: ProblemStatus, for problem: String, day: Int) {
         var nextProgress = progress
         var daily = nextProgress.dailyProgress(for: day)
-        let wasRed = daily.status(for: problem) == .red
+        let previousStatus = daily.status(for: problem)
+        let previousRedoDate = daily.redoDates[problem]
         daily.problemStatuses[problem] = status
 
         if status == .red {
@@ -112,7 +118,9 @@ final class StudyProgressStore: ObservableObject {
         nextProgress.dayProgress[max(day, 1)] = daily
         commit(nextProgress)
 
-        if status == .red || wasRed {
+        let nextRedoDate = daily.redoDates[problem]
+        let touchedRedoState = previousStatus == .red || status == .red || previousRedoDate != nil || nextRedoDate != nil
+        if touchedRedoState && (previousStatus != status || previousRedoDate != nextRedoDate) {
             Task { await scheduleMorningReminderIfNeeded() }
         }
     }
@@ -125,12 +133,17 @@ final class StudyProgressStore: ObservableObject {
     func updateRedoDate(_ date: Date, for problem: String, day: Int) {
         var nextProgress = progress
         var daily = nextProgress.dailyProgress(for: day)
+        let previousStatus = daily.status(for: problem)
+        let previousRedoDate = daily.redoDates[problem]
         daily.problemStatuses[problem] = .red
         daily.redoDates[problem] = min(Calendar.current.startOfDay(for: date), redoGraceEndDate())
 
         nextProgress.dayProgress[max(day, 1)] = daily
         commit(nextProgress)
-        Task { await scheduleMorningReminderIfNeeded() }
+
+        if previousStatus != .red || previousRedoDate != daily.redoDates[problem] {
+            Task { await scheduleMorningReminderIfNeeded() }
+        }
     }
 
     func suggestedRedoDate(for day: Int) -> Date {
@@ -249,9 +262,9 @@ final class StudyProgressStore: ObservableObject {
         commit(nextProgress)
     }
 
-    func toggleRoadmapProblem(_ problem: String) {
+    func toggleRoadmapProblem(_ problem: String, lockingThrough day: Int? = nil) {
         if progress.status(for: problem) == .untouched {
-            setStatus(.green, for: problem, day: plannedDay(for: problem))
+            setStatus(.green, for: problem, day: plannedDay(for: problem, lockingThrough: day))
         } else {
             clearProblemStatus(problem)
         }
@@ -259,20 +272,28 @@ final class StudyProgressStore: ObservableObject {
 
     private func clearProblemStatus(_ problem: String) {
         var nextProgress = progress
+        var removedRedoWork = false
 
         for day in nextProgress.dayProgress.keys {
             var daily = nextProgress.dailyProgress(for: day)
+            if daily.status(for: problem) == .red || daily.redoDates[problem] != nil {
+                removedRedoWork = true
+            }
             daily.problemStatuses.removeValue(forKey: problem)
             daily.redoDates.removeValue(forKey: problem)
             nextProgress.dayProgress[day] = daily
         }
 
         commit(nextProgress)
+
+        if removedRedoWork {
+            Task { await scheduleMorningReminderIfNeeded() }
+        }
     }
 
-    private func plannedDay(for problem: String) -> Int {
-        let baseSchedule = StudyPlanner.plan(startDate: progress.startDate, settings: progress.settings)
-        return baseSchedule.days.first { $0.problems.contains(problem) }?.day ?? progress.currentDayNumber(in: schedule)
+    private func plannedDay(for problem: String, lockingThrough day: Int? = nil) -> Int {
+        let currentSchedule = day.map { StudyPlanner.plan(for: progress, lockThroughDay: $0) } ?? schedule
+        return currentSchedule.days.first { $0.problems.contains(problem) }?.day ?? progress.currentDayNumber(in: currentSchedule)
     }
 
     func resetTimeline(startDate: Date = Date(), keepSettings: Bool = true) {
@@ -287,13 +308,10 @@ final class StudyProgressStore: ObservableObject {
         commit(StoredProgress(startDate: progress.startDate, settings: progress.settings, dayProgress: [:]))
     }
 
-    func completeOnboarding() {
+    func completeOnboarding() async {
+        await scheduleAllRemindersIfNeeded()
         hasCompletedOnboarding = true
         onboardingDefaults.set(true, forKey: onboardingStorageKey)
-
-        Task {
-            await scheduleAllRemindersIfNeeded()
-        }
     }
 
     func completeWelcomeTour() {
@@ -318,7 +336,21 @@ final class StudyProgressStore: ObservableObject {
     private func commit(_ nextProgress: StoredProgress) {
         progress = nextProgress
         ProgressPersistence.save(nextProgress)
-        WidgetCenter.shared.reloadAllTimelines()
+        scheduleWidgetReload()
+    }
+
+    private func scheduleWidgetReload() {
+        widgetReloadTask?.cancel()
+        widgetReloadTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .seconds(2))
+            } catch {
+                return
+            }
+
+            WidgetCenter.shared.reloadAllTimelines()
+            widgetReloadTask = nil
+        }
     }
 
     private func scheduleAllRemindersIfNeeded() async {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private enum AppTab: Hashable {
     case today
@@ -16,6 +17,18 @@ struct ContentView: View {
     @State private var tourFrames: [TourAnchorID: CGRect] = [:]
 
     var body: some View {
+        GeometryReader { geo in
+            content
+                .onAppear {
+                    ScreenScale.update(width: geo.size.width)
+                }
+                .onChange(of: geo.size.width) { _, width in
+                    ScreenScale.update(width: width)
+                }
+        }
+    }
+
+    private var content: some View {
         ZStack {
             Group {
                 if store.hasCompletedOnboarding {
@@ -78,7 +91,7 @@ private struct TodayTab: View {
     @Binding var tourStep: Int?
     @Binding var tourFrames: [TourAnchorID: CGRect]
 
-    private var schedule: StudySchedule { store.schedule }
+    private var schedule: StudySchedule { store.schedule(lockingThrough: selectedDay) }
     private var day: StudyDay { schedule.day(selectedDay) }
     private var dailyProgress: DailyProgress { store.progress.dailyProgress(for: selectedDay) }
     private var redoCandidates: [RedoCandidate] { store.progress.redoCandidates(for: selectedDay, in: schedule) }
@@ -141,7 +154,7 @@ private struct RoadmapTab: View {
                     progress: store.progress,
                     toggleProblem: { problem in
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                            store.toggleRoadmapProblem(problem)
+                            store.toggleRoadmapProblem(problem, lockingThrough: selectedDay)
                         }
                     }
                 )
@@ -2204,12 +2217,19 @@ private struct WelcomeTourView: View {
 
     private var currentStep: TourStep { steps[stepIndex] }
     private var isLast: Bool { stepIndex == steps.count - 1 }
+    private var measuredTabBarHeight: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .compactMap { window in findTabBar(in: window)?.bounds.height }
+            .first ?? 49
+    }
 
     var body: some View {
         GeometryReader { geo in
             let safeTop = geo.safeAreaInsets.top
             let safeBottom = geo.safeAreaInsets.bottom
-            let tabBarHeight: CGFloat = 49
+            let tabBarHeight = max(49, measuredTabBarHeight - safeBottom)
             let fullHeight = geo.size.height + safeTop + safeBottom
 
             let frame = tourFrames[currentStep.anchorID] ?? .zero
@@ -2252,6 +2272,20 @@ private struct WelcomeTourView: View {
         .onChange(of: stepIndex) { _, newIndex in
             tourStep = newIndex
         }
+    }
+
+    private func findTabBar(in view: UIView) -> UITabBar? {
+        if let tabBar = view as? UITabBar {
+            return tabBar
+        }
+
+        for subview in view.subviews {
+            if let tabBar = findTabBar(in: subview) {
+                return tabBar
+            }
+        }
+
+        return nil
     }
 
     @ViewBuilder

@@ -1,18 +1,25 @@
 import SwiftUI
 import UIKit
 
+@MainActor
 enum ScreenScale {
     static let baseWidth: CGFloat = 375
+    private static var screenWidth: CGFloat = baseWidth
 
     static var factor: CGFloat {
-        max(1.0, UIScreen.main.bounds.width / baseWidth)
+        max(1.0, screenWidth / baseWidth)
     }
 
     static func scale(_ value: CGFloat, cap: CGFloat = 1.35) -> CGFloat {
         value * min(factor, cap)
     }
+
+    static func update(width: CGFloat) {
+        screenWidth = max(width, baseWidth)
+    }
 }
 
+@MainActor
 enum AppFont {
     static func body(size: CGFloat = 15, weight: Font.Weight = .regular) -> Font {
         .custom(postScriptName(for: weight), size: ScreenScale.scale(size), relativeTo: .body)

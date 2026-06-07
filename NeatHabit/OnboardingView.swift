@@ -12,6 +12,7 @@ struct OnboardingView: View {
     @EnvironmentObject private var store: StudyProgressStore
     @State private var appeared = false
     @State private var page = 0
+    @State private var isCompletingOnboarding = false
 
     private var schedule: StudySchedule { store.schedule }
     private var settings: StudySettings { store.progress.settings }
@@ -40,6 +41,10 @@ struct OnboardingView: View {
     }
 
     private var ctaTitle: String {
+        if isCompletingOnboarding {
+            return "Starting"
+        }
+
         if page == 4 {
             return canStart ? "See the app" : "Adjust time"
         }
@@ -51,6 +56,10 @@ struct OnboardingView: View {
     }
 
     private var ctaSymbol: String {
+        if isCompletingOnboarding {
+            return "hourglass"
+        }
+
         if page == 4 {
             return canStart ? "arrow.right" : "timer"
         }
@@ -350,6 +359,8 @@ struct OnboardingView: View {
                 HStack(spacing: 12) {
                     if page > 0 {
                         Button {
+                            guard !isCompletingOnboarding else { return }
+
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                                 page -= 1
                             }
@@ -361,6 +372,8 @@ struct OnboardingView: View {
                     }
 
                     Button {
+                        guard !isCompletingOnboarding else { return }
+
                         if page < 6 {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                                 page += 1
@@ -374,8 +387,10 @@ struct OnboardingView: View {
                             }
 
                             Haptics.success()
-                            withAnimation(.smooth(duration: 0.45)) {
-                                store.completeOnboarding()
+                            isCompletingOnboarding = true
+                            Task { @MainActor in
+                                await store.completeOnboarding()
+                                isCompletingOnboarding = false
                             }
                         }
                     } label: {
@@ -384,6 +399,7 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(SWPrimaryGlassButtonStyle(tint: canStart ? Theme.accent : Theme.red))
+                    .disabled(isCompletingOnboarding)
                     .shimmerSweep(duration: 1.15, delay: 0.8)
                 }
                 .padding(.horizontal, ScreenScale.scale(22))

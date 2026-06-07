@@ -22,6 +22,8 @@
 		200000000000000000000013 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000016 /* OnboardingView.swift */; };
 		200000000000000000000014 /* SystemDesignTopic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000017 /* SystemDesignTopic.swift */; };
 		200000000000000000000015 /* SystemDesignDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000018 /* SystemDesignDetailView.swift */; };
+		200000000000000000000016 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000019 /* PrivacyInfo.xcprivacy */; };
+		200000000000000000000017 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000019 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +69,7 @@
 		100000000000000000000016 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		100000000000000000000017 /* SystemDesignTopic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemDesignTopic.swift; sourceTree = "<group>"; };
 		100000000000000000000018 /* SystemDesignDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemDesignDetailView.swift; sourceTree = "<group>"; };
+		100000000000000000000019 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -116,6 +119,7 @@
 				100000000000000000000003 /* StudyProgressStore.swift */,
 				100000000000000000000017 /* SystemDesignTopic.swift */,
 				100000000000000000000018 /* SystemDesignDetailView.swift */,
+				100000000000000000000019 /* PrivacyInfo.xcprivacy */,
 				100000000000000000000006 /* Assets.xcassets */,
 				100000000000000000000008 /* Info.plist */,
 				100000000000000000000009 /* NeatHabit.entitlements */,
@@ -225,6 +229,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				200000000000000000000006 /* Assets.xcassets in Resources */,
+				200000000000000000000016 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,6 +237,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				200000000000000000000017 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
