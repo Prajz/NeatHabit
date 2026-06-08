@@ -345,7 +345,7 @@ private struct GuideSetupCard: View {
                         Label("Show app tour", systemImage: "sparkles")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.glass)
+                    .compatibleGlassButtonStyle(tint: Theme.accent)
 
                     Button {
                         let moved = store.shuffleCompletedFutureProblems()
@@ -357,7 +357,7 @@ private struct GuideSetupCard: View {
                         Label("Shuffle problems", systemImage: "shuffle")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.glass)
+                    .compatibleGlassButtonStyle(tint: Theme.glassBlue)
 
                     if let shuffleSummary {
                         Text(shuffleSummary)
@@ -373,7 +373,7 @@ private struct GuideSetupCard: View {
                         Label("Redo onboarding", systemImage: "rectangle.portrait.and.arrow.right")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.glass)
+                    .compatibleGlassButtonStyle(tint: Theme.glassBlue)
 
                     Button(role: .destructive) {
                         store.restartOnboarding(resetTimeline: true)
@@ -381,7 +381,7 @@ private struct GuideSetupCard: View {
                         Label("Reset timeline + redo onboarding", systemImage: "calendar.badge.clock")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.glass)
+                    .compatibleGlassButtonStyle(tint: Theme.red)
                 }
             }
         }
@@ -566,7 +566,7 @@ private struct ExtraPracticeCard: View {
                             title = ""
                             section = "Extra Practice"
                         }
-                        .buttonStyle(.glass)
+                        .compatibleGlassButtonStyle(tint: Theme.accent, prominence: .primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 

@@ -361,9 +361,28 @@ extension View {
         modifier(GlassControlBackground(tint: tint, cornerRadius: cornerRadius))
     }
 
+    @ViewBuilder
+    func compatibleGlassButtonStyle(tint: Color = Theme.accent, prominence: GlassButtonProminence = .secondary) -> some View {
+        if #available(iOS 26.0, *) {
+            self.buttonStyle(.glass)
+        } else {
+            switch prominence {
+            case .primary:
+                self.buttonStyle(SWPrimaryGlassButtonStyle(tint: tint))
+            case .secondary:
+                self.buttonStyle(SWSecondaryGlassButtonStyle(tint: tint))
+            }
+        }
+    }
+
     func shimmerSweep(duration: Double = 1.15, delay: Double = 1.5, cornerRadius: CGFloat = 22) -> some View {
         modifier(SWShimmerSweep(duration: duration, delay: delay, cornerRadius: cornerRadius))
     }
+}
+
+enum GlassButtonProminence {
+    case primary
+    case secondary
 }
 
 private struct GlassControlBackground: ViewModifier {

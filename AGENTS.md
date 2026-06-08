@@ -1,6 +1,6 @@
 # NeatHabit — Agent Guide
 
-> **Read this before touching the codebase.** NeatHabit is a SwiftUI iOS 26 app for tracking the NeetCode 150 study plan plus a daily system design habit. It has a widget extension. Persistence lives in an App Group container. This file is the source of truth for architecture, conventions, and known landmines.
+> **Read this before touching the codebase.** NeatHabit is a SwiftUI iOS 17+ app for tracking the NeetCode 150 study plan plus a daily system design habit. It has a widget extension. Persistence lives in an App Group container. This file is the source of truth for architecture, conventions, and known landmines.
 
 ---
 
@@ -56,7 +56,7 @@ NeatHabit/
 ## 3. Build, run, sign
 
 - **Xcode:** 16+ (project is `objectVersion = 60`, `LastUpgradeCheck = 2650`).
-- **Deployment target:** iOS 26.0. Do not lower.
+- **Deployment target:** iOS 17.0. Do not raise unless a feature explicitly needs it. iOS 26-only UI APIs must be guarded with availability checks and keep compatible fallbacks.
 - **Swift:** 6.0. Strict concurrency is on. `@MainActor` is the default for the store; do not put UI work on background actors.
 - **Team:** `TYVJV99Z56` (set in `project.pbxproj`). The user is `praj`. If you sign on a different machine, override the team in the target editor.
 - **Bundle IDs:** `uk.co.praj.NeatHabit` (app) and `uk.co.praj.NeatHabit.widget` (extension).
@@ -172,6 +172,7 @@ Returned by `StoredProgress.redoCandidates(for:in:)`. Sorted by due date. Used t
 - **Notifications** are scheduled by `StudyProgressStore`. Do not call `UNUserNotificationCenter` from a view.
 - **Difficulty badges** are neutral metadata. Keep them monochrome/muted and visually separate from Green/Yellow/Red status chips.
 - **Shuffle problems** compacts Green/Yellow future work into earlier open day capacity. It intentionally does not move Red redo items.
+- **iOS compatibility.** Preserve the iOS 26 look where available, but keep iOS 17.0 as the minimum. Use `compatibleGlassButtonStyle` for buttons that want native iOS 26 `.glass` styling with a pre-iOS 26 fallback.
 
 ---
 
@@ -189,6 +190,11 @@ Read this before changing anything. Each item has been verified in the current c
 6. **Privacy manifest.** `NeatHabit/PrivacyInfo.xcprivacy` is included in both app and widget resources and declares `UserDefaults` required-reason API usage.
 7. **Redo reminder churn.** Redo reminders are refreshed only when red status or redo date state changes, including when a red roadmap problem is cleared.
 8. **Split `ContentView.swift`.** Tab roots, cards, shared view pieces, and the welcome tour now live under `Views/Today`, `Views/Roadmap`, `Views/Progress`, `Views/Guide`, `Views/Tour`, and `Views/Components`.
+
+### Completed in the 2026-06-08 compatibility pass
+
+1. **Lowered deployment target.** The app and widget now inherit iOS 17.0 from the project build settings instead of iOS 26.0.
+2. **Guarded iOS 26 glass buttons.** Guide buttons now use `compatibleGlassButtonStyle`, which keeps native `.glass` styling on iOS 26+ and falls back to the app's custom glass-like button styles on iOS 17-25.
 
 ### High — fix before next release
 
@@ -246,7 +252,7 @@ Detailed plan: `LOCAL_PYTHON_EXECUTION_PLAN.md`. Implement only when the user ex
 When you are asked to add something new:
 
 1. **Locate first.** `grep` and `glob` before writing. Many helpers already exist: `percent(_:)`, `shortDateText(_:)`, `LiquidGlassCard`, `SWPrimaryGlassButtonStyle`, `Haptics`.
-2. **Match the design language.** New cards use `LiquidGlassCard(tint: Theme.accent)`. New buttons use `SWPrimaryGlassButtonStyle` or `SWSecondaryGlassButtonStyle`. New text uses `AppFont` or system with the project's tracking/weight choices.
+2. **Match the design language.** New cards use `LiquidGlassCard(tint: Theme.accent)`. New buttons use `compatibleGlassButtonStyle` when they should look native glass on iOS 26 and use the app fallback on iOS 17-25; otherwise use `SWPrimaryGlassButtonStyle` or `SWSecondaryGlassButtonStyle`. New text uses `AppFont` or system with the project's tracking/weight choices.
 3. **Use the store.** All persistence flows through `StudyProgressStore`. Do not write `UserDefaults` from a view. Do not call `UNUserNotificationCenter` from a view.
 4. **Test the widget.** If the feature changes `StoredProgress` shape, the widget may need updates. Re-run on the device (or simulator) and add widgets to a Home Screen and Lock Screen to confirm.
 5. **Document in `CHANGELOG.md` if it exists.** It does not. Ask the user if they want one.
@@ -281,7 +287,7 @@ When you are asked to add something new:
 | `NeatHabit/StudyProgressStore.swift` | 506 | Store, persistence glue, notification scheduling, shuffle compaction |
 | `NeatHabit/SystemDesignDetailView.swift` | 516 | System design topic detail page (hero, diagram, concepts, talking points, tradeoffs) |
 | `NeatHabit/SystemDesignTopic.swift` | 1,040 | ~30 system design topics as static data |
-| `NeatHabit/DesignSystem.swift` | 396 | `Theme`, `AppFont`, `ScreenScale`, `AppBackground`, `LiquidGlassCard`, button styles, haptics, shimmer |
+| `NeatHabit/DesignSystem.swift` | 411 | `Theme`, `AppFont`, `ScreenScale`, `AppBackground`, `LiquidGlassCard`, compatible/native glass button styles, haptics, shimmer |
 | `NeatHabit/PrivacyInfo.xcprivacy` | 27 | Privacy manifest for app and widget resources |
 | `Shared/StudyPlan.swift` | 643 | `StudySettings`, `StudyDay`, `StudySchedule`, `StudyPlanner`, NeetCode 150 sections, difficulty metadata, system design rotation |
 | `Shared/StudyProgress.swift` | 339 | `DailyProgress`, `StoredProgress`, `StatusCounts`, `PlanSummary`, `RedoCandidate`, `ProgressPersistence` |
@@ -302,8 +308,8 @@ When you are asked to add something new:
 - **Daily reminder.** Repeating notification at the user's chosen time. Scheduled by `StudyProgressStore.scheduleDailyReminderIfNeeded`.
 - **Per-question budget.** `problemBlockMinutes / 20` minutes. The onboarding uses this to warn when the plan is too tight.
 - **System design focus.** Rotates through 30 system design topics. Each day in the plan has exactly one. The detail view (`SystemDesignDetailView`) explains that topic.
-- **Liquid Glass.** The iOS 26 design system. Implemented in this app as `LiquidGlassCard` (gradient overlays, subtle borders, layered shadows).
+- **Liquid Glass.** The iOS 26 design system. Cards are approximated cross-version with `LiquidGlassCard` (gradient overlays, subtle borders, layered shadows). Buttons that need native iOS 26 glass use `compatibleGlassButtonStyle`, which falls back on iOS 17-25.
 
 ---
 
-_Last updated after the 2026-06-07 bugfix/refactor pass. Current findings are in §7. The on-device Python plan is in §8 and `LOCAL_PYTHON_EXECUTION_PLAN.md`. Do not implement §8 without an explicit go-ahead._
+_Last updated after the 2026-06-08 compatibility pass. Current findings are in §7. The on-device Python plan is in §8 and `LOCAL_PYTHON_EXECUTION_PLAN.md`. Do not implement §8 without an explicit go-ahead._

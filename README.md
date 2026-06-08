@@ -1,6 +1,6 @@
 # NeatHabit
 
-NeatHabit is a SwiftUI iOS 26 tracker for the NeetCode 150 plan plus a daily system design habit.
+NeatHabit is a SwiftUI iOS 17+ tracker for the NeetCode 150 plan plus a daily system design habit.
 
 ## Included
 
@@ -27,6 +27,6 @@ NeatHabit is a SwiftUI iOS 26 tracker for the NeetCode 150 plan plus a daily sys
 
 ## Run
 
-Open `NeatHabit.xcodeproj` in Xcode and run the `NeatHabit` scheme on an iPhone running iOS 26.0 or newer.
+Open `NeatHabit.xcodeproj` in Xcode and run the `NeatHabit` scheme on an iPhone running iOS 17.0 or newer.
 
 For a physical device, set your Apple development team in the app and widget targets and make sure both targets use the App Group `group.uk.co.praj.NeatHabit`.
