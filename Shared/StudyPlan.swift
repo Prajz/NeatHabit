@@ -149,7 +149,7 @@ enum ProblemStatus: String, CaseIterable, Codable, Hashable, Identifiable {
     }
 }
 
-enum ProblemDifficulty: String, Codable, Hashable, Identifiable {
+enum ProblemDifficulty: String, CaseIterable, Codable, Hashable, Identifiable {
     case easy
     case medium
     case hard
@@ -257,11 +257,28 @@ struct CustomProblem: Identifiable, Codable, Equatable, Hashable {
     var id: UUID
     var title: String
     var sectionTitle: String
+    var difficulty: ProblemDifficulty
 
-    init(id: UUID = UUID(), title: String, sectionTitle: String = "Extra Practice") {
+    init(id: UUID = UUID(), title: String, sectionTitle: String = "Extra Practice", difficulty: ProblemDifficulty = .medium) {
         self.id = id
         self.title = title
         self.sectionTitle = sectionTitle
+        self.difficulty = difficulty
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case sectionTitle
+        case difficulty
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decode(String.self, forKey: .title)
+        sectionTitle = try container.decodeIfPresent(String.self, forKey: .sectionTitle) ?? "Extra Practice"
+        difficulty = try container.decodeIfPresent(ProblemDifficulty.self, forKey: .difficulty) ?? .medium
     }
 }
 
@@ -332,6 +349,10 @@ enum StudyPlanner {
         return .medium
     }
 
+    static func difficulty(for problem: String, settings: StudySettings) -> ProblemDifficulty {
+        settings.extraProblems.first { $0.title == problem }?.difficulty ?? difficulty(for: problem)
+    }
+
     static func plan(for progress: StoredProgress, lockThroughDay requestedLockThroughDay: Int? = nil) -> StudySchedule {
         let baseSchedule = plan(startDate: progress.startDate, settings: progress.settings)
         let currentDay = progress.currentDayNumber(in: baseSchedule)
@@ -339,15 +360,21 @@ enum StudyPlanner {
         let completedProblemTitles = progress.touchedProblemTitles
         var lockedProblemTitles = Set<String>()
         var lockedDayNumbers = Set<Int>()
+        var assignedProblemTitles = Set<String>()
         var adaptedDaysByNumber: [Int: StudyDay] = [:]
 
         for day in baseSchedule.days where day.day <= lockThroughDay || progress.hasRecordedWork(for: day.day) {
-            let recordedProblems = orderedByProblemBank(progress.dailyProgress(for: day.day).problemStatuses.compactMap { problem, status in
+            let rawRecordedProblems = orderedByProblemBank(progress.dailyProgress(for: day.day).problemStatuses.compactMap { problem, status in
                 status == .untouched ? nil : problem
             })
-            let problems = Array(orderedUnique(recordedProblems + day.problems).prefix(max(day.problems.count, recordedProblems.count)))
+            let recordedProblems = rawRecordedProblems.filter { !assignedProblemTitles.contains($0) }
+            let baseProblems = day.problems.filter { problem in
+                !assignedProblemTitles.contains(problem) && (!completedProblemTitles.contains(problem) || rawRecordedProblems.contains(problem))
+            }
+            let problems = Array(orderedUnique(recordedProblems + baseProblems).prefix(max(day.problems.count, recordedProblems.count)))
             let problemRefs = problems.compactMap(problemRef)
             lockedProblemTitles.formUnion(problems)
+            assignedProblemTitles.formUnion(problems)
             lockedDayNumbers.insert(day.day)
             adaptedDaysByNumber[day.day] = StudyDay(
                 day: day.day,

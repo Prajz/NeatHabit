@@ -380,7 +380,6 @@ private struct ProblemsCard: View {
     let dailyProgress: DailyProgress
 
     private var counts: StatusCounts { dailyProgress.counts(for: day) }
-    private var problemBlockComplete: Bool { counts.total > 0 && counts.untouched == 0 }
 
     var body: some View {
         LiquidGlassCard(tint: Theme.accent) {
@@ -393,17 +392,14 @@ private struct ProblemsCard: View {
 
                     Spacer()
 
-                    if problemBlockComplete {
-                        CompletionBadge(title: "Complete", color: Theme.accent)
-                    } else {
-                        ProblemCountPill(done: counts.attempted, total: counts.total)
-                    }
+                    ProblemCountPill(done: counts.attempted, total: counts.total)
                 }
 
                 VStack(spacing: 10) {
                     ForEach(day.problems, id: \.self) { problem in
                         ProblemRow(
                             problem: problem,
+                            difficulty: StudyPlanner.difficulty(for: problem, settings: store.progress.settings),
                             status: dailyProgress.status(for: problem),
                             redoDate: dailyProgress.redoDate(for: problem),
                             cycleStatus: {
@@ -466,23 +462,6 @@ private struct ProblemCountPill: View {
     }
 }
 
-private struct CompletionBadge: View {
-    let title: String
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark.circle.fill")
-            Text(title)
-        }
-        .font(.caption.weight(.bold))
-        .foregroundStyle(color)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(color.opacity(0.12), in: Capsule())
-    }
-}
-
 private struct StatusCountCluster: View {
     let counts: StatusCounts
 
@@ -516,6 +495,7 @@ private struct CountBadge: View {
 
 private struct ProblemRow: View {
     let problem: String
+    let difficulty: ProblemDifficulty
     let status: ProblemStatus
     let redoDate: Date?
     let cycleStatus: () -> Void
@@ -540,7 +520,7 @@ private struct ProblemRow: View {
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    ProblemDifficultyBadge(difficulty: StudyPlanner.difficulty(for: problem))
+                    ProblemDifficultyBadge(difficulty: difficulty)
                 }
 
                 Spacer(minLength: 8)

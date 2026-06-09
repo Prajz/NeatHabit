@@ -22,17 +22,24 @@ final class StudyProgressStore: ObservableObject {
     @Published private(set) var hasSeenWelcomeTour: Bool
 
     private let onboardingDefaults: UserDefaults
+    private let saveProgress: (StoredProgress) -> Void
     private var widgetReloadTask: Task<Void, Never>?
 
-    init(progress: StoredProgress = ProgressPersistence.load(), onboardingDefaults: UserDefaults = .standard) {
+    init(
+        progress: StoredProgress = ProgressPersistence.load(),
+        onboardingDefaults: UserDefaults = .standard,
+        saveProgress: @escaping (StoredProgress) -> Void = { ProgressPersistence.save($0) }
+    ) {
         self.onboardingDefaults = onboardingDefaults
+        self.saveProgress = saveProgress
 
         var normalizedProgress = progress
         normalizedProgress.settings.dailyMinutes = min(max(normalizedProgress.settings.dailyMinutes, 20), maximumDailyMinutes)
+        Self.removeDuplicateProblemStatuses(in: &normalizedProgress)
         self.progress = normalizedProgress
 
         if normalizedProgress != progress {
-            ProgressPersistence.save(normalizedProgress)
+            saveProgress(normalizedProgress)
         }
 
         if let storedValue = onboardingDefaults.object(forKey: onboardingStorageKey) as? Bool {
@@ -107,26 +114,30 @@ final class StudyProgressStore: ObservableObject {
     }
 
     func setStatus(_ status: ProblemStatus, for problem: String, day: Int) {
+        let normalizedDay = max(day, 1)
+        let previousRedoState = redoReminderState(for: problem, in: progress)
         var nextProgress = progress
-        var daily = nextProgress.dailyProgress(for: day)
-        let previousStatus = daily.status(for: problem)
-        let previousRedoDate = daily.redoDates[problem]
-        daily.problemStatuses[problem] = status
+        removeProblemStatus(problem, from: &nextProgress, except: normalizedDay)
+        var daily = nextProgress.dailyProgress(for: normalizedDay)
 
         if status == .red {
+            daily.problemStatuses[problem] = status
             if daily.redoDates[problem] == nil {
-                daily.redoDates[problem] = suggestedRedoDate(for: day)
+                daily.redoDates[problem] = suggestedRedoDate(for: normalizedDay)
             }
+        } else if status == .untouched {
+            daily.problemStatuses.removeValue(forKey: problem)
+            daily.redoDates.removeValue(forKey: problem)
         } else {
+            daily.problemStatuses[problem] = status
             daily.redoDates.removeValue(forKey: problem)
         }
 
-        nextProgress.dayProgress[max(day, 1)] = daily
+        nextProgress.dayProgress[normalizedDay] = daily
         commit(nextProgress)
 
-        let nextRedoDate = daily.redoDates[problem]
-        let touchedRedoState = previousStatus == .red || status == .red || previousRedoDate != nil || nextRedoDate != nil
-        if touchedRedoState && (previousStatus != status || previousRedoDate != nextRedoDate) {
+        let nextRedoState = redoReminderState(for: problem, in: nextProgress)
+        if previousRedoState != nextRedoState {
             Task { await scheduleMorningReminderIfNeeded() }
         }
     }
@@ -137,17 +148,19 @@ final class StudyProgressStore: ObservableObject {
     }
 
     func updateRedoDate(_ date: Date, for problem: String, day: Int) {
+        let normalizedDay = max(day, 1)
+        let previousRedoState = redoReminderState(for: problem, in: progress)
         var nextProgress = progress
-        var daily = nextProgress.dailyProgress(for: day)
-        let previousStatus = daily.status(for: problem)
-        let previousRedoDate = daily.redoDates[problem]
+        removeProblemStatus(problem, from: &nextProgress, except: normalizedDay)
+        var daily = nextProgress.dailyProgress(for: normalizedDay)
         daily.problemStatuses[problem] = .red
         daily.redoDates[problem] = min(Calendar.current.startOfDay(for: date), redoGraceEndDate())
 
-        nextProgress.dayProgress[max(day, 1)] = daily
+        nextProgress.dayProgress[normalizedDay] = daily
         commit(nextProgress)
 
-        if previousStatus != .red || previousRedoDate != daily.redoDates[problem] {
+        let nextRedoState = redoReminderState(for: problem, in: nextProgress)
+        if previousRedoState != nextRedoState {
             Task { await scheduleMorningReminderIfNeeded() }
         }
     }
@@ -247,7 +260,7 @@ final class StudyProgressStore: ObservableObject {
         Task { await scheduleAllRemindersIfNeeded() }
     }
 
-    func addExtraProblem(title: String, sectionTitle: String) {
+    func addExtraProblem(title: String, sectionTitle: String, difficulty: ProblemDifficulty = .medium) {
         let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedSection = sectionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanedTitle.isEmpty else { return }
@@ -256,7 +269,8 @@ final class StudyProgressStore: ObservableObject {
         nextProgress.settings.extraProblems.append(
             CustomProblem(
                 title: cleanedTitle,
-                sectionTitle: cleanedSection.isEmpty ? "Extra Practice" : cleanedSection
+                sectionTitle: cleanedSection.isEmpty ? "Extra Practice" : cleanedSection,
+                difficulty: difficulty
             )
         )
         commit(nextProgress)
@@ -271,6 +285,7 @@ final class StudyProgressStore: ObservableObject {
     @discardableResult
     func shuffleCompletedFutureProblems() -> Int {
         var nextProgress = progress
+        let removedDuplicates = Self.removeDuplicateProblemStatuses(in: &nextProgress)
         let baseSchedule = StudyPlanner.plan(startDate: progress.startDate, settings: progress.settings)
         let problemOrder = baseSchedule.days.flatMap(\.problems).enumerated().reduce(into: [String: Int]()) { result, item in
             if result[item.element] == nil {
@@ -285,10 +300,8 @@ final class StudyProgressStore: ObservableObject {
             var openSlots = max(0, targetDay.problems.count - occupiedCount)
 
             while openSlots > 0, let candidate = completedFutureCandidate(after: targetDay.day, in: nextProgress, problemOrder: problemOrder, excluding: Set(targetDaily.problemStatuses.keys)) {
-                var sourceDaily = nextProgress.dailyProgress(for: candidate.day)
-                sourceDaily.problemStatuses.removeValue(forKey: candidate.problem)
-                sourceDaily.redoDates.removeValue(forKey: candidate.problem)
-                nextProgress.dayProgress[candidate.day] = sourceDaily
+                removeProblemStatus(candidate.problem, from: &nextProgress)
+                targetDaily = nextProgress.dailyProgress(for: targetDay.day)
 
                 targetDaily.problemStatuses[candidate.problem] = candidate.status
                 targetDaily.redoDates.removeValue(forKey: candidate.problem)
@@ -299,7 +312,7 @@ final class StudyProgressStore: ObservableObject {
             }
         }
 
-        guard movedCount > 0 else { return 0 }
+        guard movedCount > 0 || removedDuplicates else { return 0 }
         commit(nextProgress)
         return movedCount
     }
@@ -316,7 +329,7 @@ final class StudyProgressStore: ObservableObject {
         var nextProgress = progress
         var removedRedoWork = false
 
-        for day in nextProgress.dayProgress.keys {
+        for day in Array(nextProgress.dayProgress.keys) {
             var daily = nextProgress.dailyProgress(for: day)
             if daily.status(for: problem) == .red || daily.redoDates[problem] != nil {
                 removedRedoWork = true
@@ -354,6 +367,52 @@ final class StudyProgressStore: ObservableObject {
         }
 
         return nil
+    }
+
+    private func redoReminderState(for problem: String, in progress: StoredProgress) -> [Int: Date] {
+        progress.dayProgress.reduce(into: [Int: Date]()) { result, item in
+            let date = item.value.redoDates[problem]
+            if item.value.problemStatuses[problem] == .red || date != nil {
+                result[item.key] = date ?? .distantPast
+            }
+        }
+    }
+
+    private func removeProblemStatus(_ problem: String, from progress: inout StoredProgress, except keptDay: Int? = nil) {
+        for day in Array(progress.dayProgress.keys) where day != keptDay {
+            var daily = progress.dailyProgress(for: day)
+            daily.problemStatuses.removeValue(forKey: problem)
+            daily.redoDates.removeValue(forKey: problem)
+            progress.dayProgress[day] = daily
+        }
+    }
+
+    @discardableResult
+    private static func removeDuplicateProblemStatuses(in progress: inout StoredProgress) -> Bool {
+        var seen = Set<String>()
+        var changed = false
+
+        for day in Array(progress.dayProgress.keys).sorted() {
+            var daily = progress.dailyProgress(for: day)
+
+            for problem in daily.problemStatuses.keys.sorted() {
+                if seen.contains(problem) {
+                    daily.problemStatuses.removeValue(forKey: problem)
+                    daily.redoDates.removeValue(forKey: problem)
+                    changed = true
+                } else if daily.problemStatuses[problem] != .untouched {
+                    seen.insert(problem)
+                } else {
+                    daily.problemStatuses.removeValue(forKey: problem)
+                    daily.redoDates.removeValue(forKey: problem)
+                    changed = true
+                }
+            }
+
+            progress.dayProgress[day] = daily
+        }
+
+        return changed
     }
 
     func resetTimeline(startDate: Date = Date(), keepSettings: Bool = true) {
@@ -395,7 +454,7 @@ final class StudyProgressStore: ObservableObject {
 
     private func commit(_ nextProgress: StoredProgress) {
         progress = nextProgress
-        ProgressPersistence.save(nextProgress)
+        saveProgress(nextProgress)
         scheduleWidgetReload()
     }
 

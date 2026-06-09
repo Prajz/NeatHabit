@@ -31,6 +31,7 @@
 		200000000000000000000022 /* ProgressTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000024 /* ProgressTab.swift */; };
 		200000000000000000000023 /* GuideTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000025 /* GuideTab.swift */; };
 		200000000000000000000024 /* WelcomeTourView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000026 /* WelcomeTourView.swift */; };
+		200000000000000000000025 /* ShuffleRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000027 /* ShuffleRegressionTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +41,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 000000000000000000000008;
 			remoteInfo = NeatHabitWidgetExtension;
+		};
+		300000000000000000000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000006 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000007;
+			remoteInfo = NeatHabit;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -84,6 +92,8 @@
 		100000000000000000000024 /* ProgressTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressTab.swift; sourceTree = "<group>"; };
 		100000000000000000000025 /* GuideTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideTab.swift; sourceTree = "<group>"; };
 		100000000000000000000026 /* WelcomeTourView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeTourView.swift; sourceTree = "<group>"; };
+		100000000000000000000027 /* ShuffleRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShuffleRegressionTests.swift; sourceTree = "<group>"; };
+		100000000000000000000028 /* NeatHabitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NeatHabitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +111,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		400000000000000000000009 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -110,6 +127,7 @@
 				000000000000000000000003 /* NeatHabit */,
 				000000000000000000000004 /* Shared */,
 				000000000000000000000005 /* NeatHabitWidget */,
+				000000000000000000000016 /* NeatHabitTests */,
 				000000000000000000000002 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -119,6 +137,7 @@
 			children = (
 				100000000000000000000013 /* NeatHabitat.app */,
 				100000000000000000000012 /* NeatHabitWidgetExtension.appex */,
+				100000000000000000000028 /* NeatHabitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -224,6 +243,14 @@
 			path = NeatHabitWidget;
 			sourceTree = "<group>";
 		};
+		000000000000000000000016 /* NeatHabitTests */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000027 /* ShuffleRegressionTests.swift */,
+			);
+			path = NeatHabitTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -263,6 +290,24 @@
 			productReference = 100000000000000000000012 /* NeatHabitWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		000000000000000000000017 /* NeatHabitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 600000000000000000000004 /* Build configuration list for PBXNativeTarget "NeatHabitTests" */;
+			buildPhases = (
+				400000000000000000000008 /* Sources */,
+				400000000000000000000009 /* Frameworks */,
+				400000000000000000000010 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				300000000000000000000004 /* PBXTargetDependency */,
+			);
+			name = NeatHabitTests;
+			productName = NeatHabitTests;
+			productReference = 100000000000000000000028 /* NeatHabitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -276,10 +321,14 @@
 					000000000000000000000007 = {
 						CreatedOnToolsVersion = 26.5;
 					};
-					000000000000000000000008 = {
-						CreatedOnToolsVersion = 26.5;
-					};
+				000000000000000000000008 = {
+					CreatedOnToolsVersion = 26.5;
 				};
+				000000000000000000000017 = {
+					CreatedOnToolsVersion = 26.5;
+					TestTargetID = 000000000000000000000007;
+				};
+			};
 			};
 			buildConfigurationList = 600000000000000000000001 /* Build configuration list for PBXProject "NeatHabit" */;
 			compatibilityVersion = "Xcode 15.0";
@@ -296,6 +345,7 @@
 			targets = (
 				000000000000000000000007 /* NeatHabit */,
 				000000000000000000000008 /* NeatHabitWidgetExtension */,
+				000000000000000000000017 /* NeatHabitTests */,
 			);
 		};
 /* End PBXProject section */
@@ -315,6 +365,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				200000000000000000000017 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		400000000000000000000010 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -355,6 +412,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		400000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				200000000000000000000025 /* ShuffleRegressionTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -362,6 +427,11 @@
 			isa = PBXTargetDependency;
 			target = 000000000000000000000008 /* NeatHabitWidgetExtension */;
 			targetProxy = 300000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		300000000000000000000004 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000007 /* NeatHabit */;
+			targetProxy = 300000000000000000000003 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -596,6 +666,50 @@
 			};
 			name = Release;
 		};
+		500000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TYVJV99Z56;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.co.praj.NeatHabitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NeatHabitat.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NeatHabitat";
+			};
+			name = Debug;
+		};
+		500000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TYVJV99Z56;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.co.praj.NeatHabitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NeatHabitat.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NeatHabitat";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -622,6 +736,15 @@
 			buildConfigurations = (
 				500000000000000000000005 /* Debug */,
 				500000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		600000000000000000000004 /* Build configuration list for PBXNativeTarget "NeatHabitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				500000000000000000000007 /* Debug */,
+				500000000000000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

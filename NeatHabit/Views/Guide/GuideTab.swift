@@ -546,6 +546,7 @@ private struct ExtraPracticeCard: View {
     @State private var isExpanded = false
     @State private var title = ""
     @State private var section = "Extra Practice"
+    @State private var difficulty: ProblemDifficulty = .medium
 
     var body: some View {
         LiquidGlassCard(tint: Theme.glassBlue) {
@@ -561,10 +562,18 @@ private struct ExtraPracticeCard: View {
                         TextField("Section", text: $section)
                             .textFieldStyle(.roundedBorder)
 
+                        Picker("Difficulty", selection: $difficulty) {
+                            ForEach(ProblemDifficulty.allCases) { difficulty in
+                                Text(difficulty.title).tag(difficulty)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
                         Button("Add extra problem") {
-                            store.addExtraProblem(title: title, sectionTitle: section)
+                            store.addExtraProblem(title: title, sectionTitle: section, difficulty: difficulty)
                             title = ""
                             section = "Extra Practice"
+                            difficulty = .medium
                         }
                         .compatibleGlassButtonStyle(tint: Theme.accent, prominence: .primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -581,6 +590,7 @@ private struct ExtraPracticeCard: View {
                                         Text(problem.sectionTitle)
                                             .font(.caption.weight(.medium))
                                             .foregroundStyle(Theme.muted)
+                                        ProblemDifficultyBadge(difficulty: problem.difficulty)
                                     }
                                     Spacer()
                                     Button("Remove") {
